@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-main: #f9fafb;
+  --bg-card: #ffffff;
+  --text-main: #111827;
+  --text-muted: #6b7280;
+  --border-color: #e5e7eb;
+}
+
+.dark {
+  --bg-main: #0a0f1e;
+  --bg-card: #111827;
+  --text-main: #f9fafb;
+  --text-muted: #94a3b8;
+  --border-color: #1e293b;
+}
+
+@layer base {
+  body {
+    @apply antialiased transition-colors duration-200;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+  }
+}
