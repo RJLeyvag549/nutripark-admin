@@ -313,8 +313,8 @@ export default function ListaEspera() {
 
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-4xl font-black tracking-tighter uppercase italic">Lista de Espera</h1>
-          <p className="text-[var(--text-muted)] font-medium">Gestión administrativa y asignación excepcional de cupos</p>
+          <h1 className="text-3xl font-black tracking-tight uppercase italic text-orange-500">Lista de Espera</h1>
+          <p className="text-[var(--text-muted)] text-sm font-bold uppercase tracking-widest">Gestión administrativa y asignación excepcional de cupos</p>
         </div>
       </div>
 

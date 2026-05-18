@@ -57,6 +57,19 @@ export default function Empleados() {
   const dataTableInstance = useRef<any>(null);
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
+  // Bloqueo de scroll del body cuando hay modales abiertos
+  useEffect(() => {
+    const isAnyModalOpen = showModal || showDeleteModal || showViewModal || showFixedModal || showFixedRemoveModal || showSuccess || deleting || submitting;
+    if (isAnyModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showModal, showDeleteModal, showViewModal, showFixedModal, showFixedRemoveModal, showSuccess, deleting, submitting]);
+
   // Form State
   const [formData, setFormData] = useState({
     nombre: '',
@@ -66,7 +79,7 @@ export default function Empleados() {
     matricula: '',
     tipoVehiculo: 'particular',
     discapacidad: false,
-    contrasena: '123456'
+    contrasena: 'admin123'
   });
 
   // 1. Cargar recursos externos solo una vez (jQuery primero, luego DataTables)
@@ -162,6 +175,7 @@ export default function Empleados() {
           zeroRecords: 'No se encontraron resultados'
         },
         pageLength: 10,
+        stateSave: true, // Persistencia de estado (paginación, filtros, etc)
         order: [[1, 'asc']], // Sort by Nombre
         scrollX: false, // Deshabilitar scroll horizontal ya que la tabla es más compacta
         // Forzamos que se muestren las líneas y el estilo estándar
@@ -270,7 +284,7 @@ export default function Empleados() {
     setEmployeeToEdit(null);
     setFormData({
       nombre: '', rut: '', idCargo: '', correo: '',
-      matricula: '', tipoVehiculo: 'particular', discapacidad: false, contrasena: '123456'
+      matricula: '', tipoVehiculo: 'particular', discapacidad: false, contrasena: 'admin123'
     });
     setRutError('');
     setFormError('');
@@ -412,7 +426,7 @@ export default function Empleados() {
         setEmployeeToEdit(null);
         setFormData({
           nombre: '', rut: '', idCargo: '', correo: '',
-          matricula: '', tipoVehiculo: 'particular', discapacidad: false, contrasena: '123456'
+          matricula: '', tipoVehiculo: 'particular', discapacidad: false, contrasena: 'admin123'
         });
 
         // Mostrar pantalla naranja de éxito
@@ -689,8 +703,8 @@ export default function Empleados() {
 
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-black tracking-tight">EMPLEADOS</h1>
-          <p className="text-[var(--text-muted)]">Base de datos maestra y privilegios de calzo</p>
+        <h1 className="text-3xl font-black tracking-tight uppercase italic text-orange-500">Gestión de Empleados</h1>
+        <p className="text-[var(--text-muted)] text-sm font-bold uppercase tracking-widest">Base de datos centralizada de personal y vehículos</p>
         </div>
         <button
           onClick={openNewEmployeeModal}
@@ -831,7 +845,7 @@ export default function Empleados() {
             </div>
 
             <form onSubmit={handleSubmit}>
-              <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+              <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                 {formError && (
                   <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl text-sm font-bold animate-shake">
                     ⚠️ {formError}
@@ -876,16 +890,15 @@ export default function Empleados() {
                   <label className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">Correo Corporativo</label>
                   <input
                     type="email"
-                    required
                     value={formData.correo}
                     onChange={(e) => {
-                      setFormData({ ...formData, correo: e.target.value });
+                      setFormData({ ...formData, correo: e.target.value.toLowerCase() });
                       if (formError.toLowerCase().includes('correo')) setFormError('');
                     }}
                     className={`w-full bg-[var(--bg-main)] border ${formError.toLowerCase().includes('correo') ? 'border-red-500 ring-1 ring-red-500/20' : 'border-[var(--border-color)]'} rounded-xl px-4 py-2 text-[var(--text-main)] outline-none focus:border-orange-500 transition-colors`}
-                    placeholder="juan.perez@nutrisco.com"
+                    placeholder="juan.perez@nutrisco.com (Opcional)"
                   />
-                  {formError.toLowerCase().includes('correo') && (
+                  {formData.correo && formError.toLowerCase().includes('correo') && (
                     <p className="text-red-500 text-[10px] font-bold uppercase tracking-tight animate-pulse">
                       Dominio no permitido. Revisa el correo corporativo.
                     </p>
@@ -922,8 +935,7 @@ export default function Empleados() {
                       className="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl px-4 py-2 text-[var(--text-main)] outline-none focus:border-orange-500 transition-colors"
                     >
                       <option value="particular">Particular</option>
-                      <option value="moto">Motocicleta</option>
-                      <option value="camioneta">Camioneta</option>
+                      <option value="pool">Pool</option>
                     </select>
                   </div>
                 </div>
@@ -941,17 +953,6 @@ export default function Empleados() {
                   </label>
                 </div>
 
-                {!employeeToEdit && (
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">Contraseña por Defecto</label>
-                    <input
-                      type="text"
-                      value={formData.contrasena}
-                      onChange={(e) => setFormData({ ...formData, contrasena: e.target.value })}
-                      className="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl px-4 py-2 text-[var(--text-main)] outline-none focus:border-orange-500 transition-colors"
-                    />
-                  </div>
-                )}
               </div>
 
               <div className="p-8 bg-[var(--bg-main)]/50 border-t border-[var(--border-color)] flex gap-4">

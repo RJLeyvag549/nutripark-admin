@@ -118,7 +118,7 @@ export default function Dashboard() {
 
     // Si hay reservas, mostramos el estado de reserva/ocupación incluso si el calzo es 'forbidden'
     if (reservations && reservations.length > 0) {
-      if (reservations.some(r => r.Estado_Reserva === 'Ocupada')) return 'occupied';
+      if (reservations.some(r => r.Estado_Reserva === 'Ocupada' || r.Estado_Reserva === 'En Planta')) return 'occupied';
       return 'reserved';
     }
 
@@ -426,12 +426,12 @@ export default function Dashboard() {
 
                     <div className="space-y-4">
                       {realSlotsData[selectedSlot.id]?.map((reserva) => (
-                        <div key={reserva.ID_Reserva} className={`p-4 rounded-2xl border shadow-sm transition-all ${reserva.Estado_Reserva === 'Ocupada'
+                        <div key={reserva.ID_Reserva} className={`p-4 rounded-2xl border shadow-sm transition-all ${reserva.Estado_Reserva === 'Ocupada' || reserva.Estado_Reserva === 'En Planta'
                           ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30 ring-1 ring-blue-200 dark:ring-blue-900/50'
                           : 'bg-[var(--bg-card)] border-[var(--border-color)]'
                           }`}>
                           <div className="flex items-center mb-3">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 shrink-0 ${reserva.Estado_Reserva === 'Ocupada' ? 'bg-blue-600 text-white' : 'bg-orange-100 dark:bg-orange-900/20 text-orange-600'
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 shrink-0 ${reserva.Estado_Reserva === 'Ocupada' || reserva.Estado_Reserva === 'En Planta' ? 'bg-blue-600 text-white' : 'bg-orange-100 dark:bg-orange-900/20 text-orange-600'
                               }`}>
                               <User size={20} />
                             </div>
@@ -440,12 +440,17 @@ export default function Dashboard() {
                                 <p className="font-bold text-[var(--text-main)] text-md leading-tight">
                                   {reserva.Nombre_Empleado}
                                 </p>
-                                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${reserva.Estado_Reserva === 'Ocupada' ? 'bg-blue-600 text-white' : 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400'
+                                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${reserva.Estado_Reserva === 'Ocupada' || reserva.Estado_Reserva === 'En Planta' ? 'bg-blue-600 text-white' : 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400'
                                   }`}>
                                   {reserva.Estado_Reserva}
                                 </span>
                               </div>
                               <p className="text-xs text-[var(--text-muted)]">RUT: {reserva.ID_Empleado}</p>
+                              {reserva.Is_Visit === 1 && (
+                                <p className="text-[10px] text-orange-500 font-bold mt-1 uppercase">
+                                  Anfitrión: {reserva.Nombre_Anfitrion}
+                                </p>
+                              )}
                             </div>
                           </div>
 

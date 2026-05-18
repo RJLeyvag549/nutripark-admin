@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { X, Calendar, Check, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { X, Calendar, Check, AlertCircle, MapPin, ChevronLeft } from 'lucide-react';
 import { ZONES } from '../constants/Zones';
 import type { Slot } from '../constants/Zones';
 
@@ -93,25 +93,45 @@ export default function FixedSlotModal({ isOpen, onClose, employee, onConfirm }:
   const [isFetchingOccupancy, setIsFetchingOccupancy] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [mapScale, setMapScale] = useState(1);
+  const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
+  const [step, setStep] = useState(1); // 1: Selector de Zona (solo para discapacidad), 2: Mapa
 
-  // Encontrar la zona del empleado
-  const zone = ZONES.find(z => z.dbId === employee?.idZona) || ZONES[0];
+  // Filtrar zonas que tienen calzos de discapacidad
+  const zonesWithDiscap = useMemo(() => {
+    return ZONES.filter(z =>
+      z.rows.some(r => r.slots.some(s => s.label === 'Discap.'))
+    );
+  }, []);
+
+  // Determinar zona actual
+  const zone = useMemo(() => {
+    const id = selectedZoneId || employee?.idZona;
+    return ZONES.find(z => z.dbId === id) || ZONES[0];
+  }, [selectedZoneId, employee?.idZona]);
+
   const tweaks = ZONE_TWEAKS[zone.dbId] || { squish: 0.55, globalX: 0, globalY: 0, rows: {} };
 
   useEffect(() => {
     if (isOpen) {
       setSelectedSlot(null);
+      setSelectedZoneId(employee?.idZona || null);
+      // Solo los discapacitados inician en el paso 1 (Selector de Zona)
+      if (employee?.discapacidad) {
+        setStep(1);
+      } else {
+        setStep(2);
+      }
       fetchOccupancy();
     }
-  }, [isOpen, employee?.idZona]);
+  }, [isOpen, employee?.idZona, employee?.discapacidad]);
 
-  // Calcular la escala real basándonos en el ancho del contenedor respecto a 1000px (ancho base de diseño)
+  // Calcular la escala real
   useEffect(() => {
     if (isOpen && containerRef.current) {
       const updateScale = () => {
         if (containerRef.current) {
           const width = containerRef.current.offsetWidth;
-          setMapScale(width / 1400); // Se ajusta a 1400px como en el Dashboard
+          setMapScale(width / 1400); 
         }
       };
 
@@ -119,7 +139,7 @@ export default function FixedSlotModal({ isOpen, onClose, employee, onConfirm }:
       window.addEventListener('resize', updateScale);
       return () => window.removeEventListener('resize', updateScale);
     }
-  }, [isOpen, isFetchingOccupancy]);
+  }, [isOpen, isFetchingOccupancy, step]);
 
   const fetchOccupancy = async () => {
     setIsFetchingOccupancy(true);
@@ -137,8 +157,6 @@ export default function FixedSlotModal({ isOpen, onClose, employee, onConfirm }:
       if (response.ok && contentType && contentType.indexOf("application/json") !== -1) {
         const data = await response.json();
         setOccupancy(data);
-      } else {
-        console.warn('API returned non-JSON response or error:', response.status);
       }
     } catch (error) {
       console.error('Error fetching occupancy:', error);
@@ -177,162 +195,260 @@ export default function FixedSlotModal({ isOpen, onClose, employee, onConfirm }:
 
         {/* Header */}
         <div className="p-6 border-b border-[var(--border-color)] flex justify-between items-center bg-[var(--bg-main)]/90 backdrop-blur-md relative z-20">
-          <div>
-            <h2 className="text-xl font-black text-[var(--text-main)] flex items-center gap-3">
-              <div className="p-2 bg-orange-500/10 rounded-xl">
-                <Calendar className="text-orange-500" size={20} />
-              </div>
-              Asignación de Calzo Fijo
-            </h2>
-            <p className="text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-widest mt-1">
-              Empleado: {employee.nombre}
-            </p>
+          <div className="flex items-center gap-4">
+            {step === 2 && employee.discapacidad && (
+              <button
+                onClick={() => setStep(1)}
+                className="p-2 hover:bg-orange-500/10 text-orange-500 rounded-full transition-all"
+                title="Cambiar Zona"
+              >
+                <ChevronLeft size={24} />
+              </button>
+            )}
+            <div>
+              <h2 className="text-xl font-black text-[var(--text-main)] flex items-center gap-3">
+                <div className="p-2 bg-orange-500/10 rounded-xl">
+                  <Calendar className="text-orange-500" size={20} />
+                </div>
+                {employee.discapacidad ? 'Asignación Calzo Discapacidad' : 'Asignación de Calzo Fijo'}
+              </h2>
+              <p className="text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-widest mt-1">
+                Empleado: {employee.nombre} {employee.discapacidad && <span className="text-blue-500 ml-2">♿ DISCAPACIDAD</span>}
+              </p>
+            </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-[var(--bg-main)] rounded-full transition-colors">
             <X size={20} className="text-[var(--text-muted)]" />
           </button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto relative flex flex-col dark:bg-slate-900/50 bg-transparent">
-          <div className="p-6 pb-2 space-y-4 relative z-10 bg-gradient-to-b from-[var(--bg-card)] via-[var(--bg-card)]/80 to-transparent">
-            <div className="bg-[var(--bg-card)] border border-[var(--border-color)] p-4 rounded-[25px] flex flex-col gap-3 backdrop-blur-sm shadow-sm">
-              <div className="flex gap-2 items-center">
-                <div className="p-1.5 bg-orange-500/10 rounded-lg text-orange-500">
-                  <AlertCircle size={16} />
-                </div>
-                <h4 className="font-black text-[var(--text-main)] uppercase text-[10px]">Nomenclatura de Calzos</h4>
+          {step === 1 ? (
+            <div className="p-8 space-y-6">
+              <div className="text-center mb-8">
+                <h3 className="text-lg font-black uppercase tracking-tight text-[var(--text-main)] mb-2">Seleccionar Zona con Acceso Universal</h3>
+                <p className="text-xs text-[var(--text-muted)] font-medium">Solo se muestran zonas con calzos para personas con discapacidad</p>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(156, 163, 175, 0.4)', border: '1px solid rgba(255,255,255,0.4)' }}></div>
-                  <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Disponible</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#ff7700', border: '2px solid white' }}></div>
-                  <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Seleccionado</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(239, 68, 68, 0.9)', border: '1px solid rgba(255,255,255,0.4)' }}></div>
-                  <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Asignado (Fijo)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(234, 179, 8, 0.8)', border: '1px solid rgba(255,255,255,0.4)' }}></div>
-                  <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Reserva Diaria</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.4)' }}></div>
-                  <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase">No Disponible</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-end">
-              <h3 className="text-sm font-black text-[var(--text-main)] uppercase tracking-tight drop-shadow-sm dark:drop-shadow-md">Mapa: {zone.name}</h3>
-              {selectedSlot && (
-                <div className="bg-orange-500 text-white px-3 py-1 rounded-lg font-black text-[11px] animate-in slide-in-from-right shadow-lg">
-                  CALZO {selectedSlot.label}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="relative w-full flex-1 flex flex-col items-center justify-start">
-            {isFetchingOccupancy ? (
-              <div className="flex flex-col items-center justify-center gap-2 mt-20">
-                <div className="animate-spin h-8 w-8 border-3 border-orange-500 border-t-transparent rounded-full"></div>
-                <p className="text-orange-500 font-black uppercase tracking-widest text-[10px]">Cargando estado...</p>
-              </div>
-            ) : (
-              <div
-                ref={containerRef}
-                className="relative mx-auto w-full"
-                style={{ height: 'max-content' }}
-              >
-                <img
-                  src={zone.image}
-                  className="block w-full h-auto opacity-90 dark:opacity-70 dark:brightness-90 transition-opacity"
-                  alt={zone.name}
-                />
-                <div
-                  className="absolute top-0 left-0 w-full h-full"
-                  style={{
-                    transform: `scale(${mapScale * (zone.globalScale || 1)}) translate(${(zone.offsetX || 0) + (tweaks.globalX || 0)}px, ${(zone.offsetY || 0) + (tweaks.globalY || 0)}px)`,
-                    transformOrigin: 'top left',
-                    width: '1400px',
-                    height: `${mapScale > 0 ? ((tweaks.squish || 0.55) / mapScale) * 100 : 100}%`
-                  }}
-                >
-                  {zone.rows.map(row => {
-                    const rowTweaks = tweaks.rows?.[row.id] || { size: 1.0, spacing: 1.0, xOffset: 0, yOffset: 0 };
-                    return (
-                      <div
-                        key={row.id}
-                        className="absolute"
-                        style={{
-                          left: `${row.x + (rowTweaks.xOffset || 0)}%`,
-                          top: `${row.y + (rowTweaks.yOffset || 0)}%`,
-                          transform: `rotate(${row.rotation}deg) scale(${row.rowScale})`,
-                          transformOrigin: 'top left'
-                        }}
-                      >
-                        {row.slots.map(slot => {
-                          const invRotation = row.textRotation ? row.textRotation : `-${row.rotation}deg`;
-                          const occ = occupancy.find(o => o.ID_Calzo === slot.id);
-                          const isFixed = occ?.Is_Fixed === 1;
-                          const isTempReserved = !!occ?.Estado_Reserva && !isFixed;
-                          const isForbidden = slot.status === 'forbidden' || isFixed;
-                          const isSelected = selectedSlot?.id === slot.id;
-
-                          let bgColor = 'rgba(156, 163, 175, 0.4)';
-                          if (isSelected) bgColor = '#ff7700';
-                          else if (isFixed) bgColor = 'rgba(239, 68, 68, 0.9)';
-                          else if (isTempReserved) bgColor = 'rgba(234, 179, 8, 0.8)';
-                          else if (slot.status === 'forbidden') bgColor = 'rgba(0,0,0,0.6)';
-                          else if (slot.status === 'danger') bgColor = 'rgba(220, 38, 38, 0.3)';
-                          else if (slot.status === 'label') bgColor = 'transparent';
-
-                          return (
-                            <button
-                              key={slot.id}
-                              type="button"
-                              onClick={() => !isForbidden && slot.status !== 'label' && slot.status !== 'danger' && setSelectedSlot(slot)}
-                              disabled={isForbidden || slot.status === 'label' || slot.status === 'danger'}
-                              className={`absolute flex items-center justify-center transition-all hover:scale-105 ${isSelected ? 'ring-4 ring-orange-500 ring-offset-2 z-50 shadow-2xl' : 'shadow-md'
-                                } ${isTempReserved ? 'animate-pulse' : ''}`}
-                              style={{
-                                left: `${slot.offsetX * (rowTweaks.spacing || 1)}px`,
-                                top: `${slot.offsetY}px`,
-                                width: `${slot.width * (rowTweaks.size || 1)}px`,
-                                height: `${slot.height * (rowTweaks.size || 1)}px`,
-                                backgroundColor: bgColor,
-                                border: isSelected ? '3px solid white' : (slot.status === 'label' ? 'none' : '1px solid rgba(255,255,255,0.4)'),
-                                borderRadius: slot.status === 'label' ? '0px' : '4px',
-                                cursor: (isForbidden || slot.status === 'label' || slot.status === 'danger') ? 'default' : 'pointer',
-                                zIndex: isSelected ? 10 : 1
-                              }}
-                              title={isFixed ? `Calzo Fijo de ${occ.Nombre_Fijo}` : `Calzo ${slot.label}`}
-                            >
-                              <span
-                                className="text-[11px] font-black pointer-events-none drop-shadow-md"
-                                style={{
-                                  color: slot.status === 'label' ? 'rgba(255,255,255,0.8)' : 'white',
-                                  transform: `rotate(${invRotation})`
-                                }}
-                              >
-                                {slot.label}
-                              </span>
-                            </button>
-                          );
-                        })}
+              <div className="grid grid-cols-1 gap-4 max-w-2xl mx-auto">
+                {zonesWithDiscap.map(z => {
+                  const isCurrentZone = z.dbId === employee.idZona;
+                  return (
+                    <button
+                      key={z.id}
+                      onClick={() => {
+                        setSelectedZoneId(z.dbId);
+                        setStep(2);
+                      }}
+                      className={`group flex items-center justify-between p-6 rounded-3xl border transition-all hover:scale-[1.02] active:scale-98 ${selectedZoneId === z.dbId ? 'bg-orange-500 border-orange-600 text-white shadow-xl shadow-orange-500/20' : 'bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-orange-500/50 text-[var(--text-main)] shadow-sm'}`}
+                    >
+                      <div className="flex items-center gap-5">
+                        <div className={`p-3 rounded-2xl ${selectedZoneId === z.dbId ? 'bg-white/20' : 'bg-orange-500/10 text-orange-500'}`}>
+                          <MapPin size={24} />
+                        </div>
+                        <div className="text-left">
+                          <p className="font-black text-xl uppercase tracking-tighter">{z.name}</p>
+                          {isCurrentZone && <p className={`text-[10px] font-bold uppercase tracking-widest ${selectedZoneId === z.dbId ? 'text-white/70' : 'text-blue-500'}`}>Zona Asignada Actual</p>}
+                        </div>
                       </div>
-                    )
-                  })}
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-[10px] font-black uppercase opacity-60">Calzos Discap.</p>
+                          <p className="text-lg font-black">Habilitados</p>
+                        </div>
+                        <ChevronLeft size={24} className="rotate-180 opacity-40 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="p-6 pb-2 space-y-4 relative z-10 bg-gradient-to-b from-[var(--bg-card)] via-[var(--bg-card)]/80 to-transparent">
+                <div className="bg-[var(--bg-card)] border border-[var(--border-color)] p-4 rounded-[25px] flex flex-col gap-3 backdrop-blur-sm shadow-sm">
+                  <div className="flex gap-2 items-center">
+                    <div className="p-1.5 bg-orange-500/10 rounded-lg text-orange-500">
+                      <AlertCircle size={16} />
+                    </div>
+                    <h4 className="font-black text-[var(--text-main)] uppercase text-[10px]">
+                      {employee.discapacidad ? 'Restricción de Seguridad: Solo Calzos Discap.' : 'Nomenclatura de Calzos'}
+                    </h4>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    {employee.discapacidad ? (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded" style={{ backgroundColor: '#3b82f6', border: '1px solid rgba(255,255,255,0.4)' }}></div>
+                          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Disponible</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded" style={{ backgroundColor: '#ff7700', border: '2px solid white' }}></div>
+                          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Seleccionado</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(239, 68, 68, 0.9)', border: '1px solid rgba(255,255,255,0.4)' }}></div>
+                          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Ya Asignado</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(156, 163, 175, 0.4)', border: '1px solid rgba(255,255,255,0.4)' }}></div>
+                          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase">No Disponible</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(156, 163, 175, 0.4)', border: '1px solid rgba(255,255,255,0.4)' }}></div>
+                          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Disponible</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded" style={{ backgroundColor: '#ff7700', border: '2px solid white' }}></div>
+                          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Seleccionado</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(239, 68, 68, 0.9)', border: '1px solid rgba(255,255,255,0.4)' }}></div>
+                          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Asignado (Fijo)</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(234, 179, 8, 0.8)', border: '1px solid rgba(255,255,255,0.4)' }}></div>
+                          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Reserva Diaria</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.4)' }}></div>
+                          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase">No Disponible</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-end">
+                  <h3 className="text-sm font-black text-[var(--text-main)] uppercase tracking-tight drop-shadow-sm dark:drop-shadow-md">Mapa: {zone.name}</h3>
+                  {selectedSlot && (
+                    <div className="bg-orange-500 text-white px-3 py-1 rounded-lg font-black text-[11px] animate-in slide-in-from-right shadow-lg">
+                      CALZO {selectedSlot.label}
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
-          </div>
+
+              <div className="relative w-full flex-1 flex flex-col items-center justify-start">
+                {isFetchingOccupancy ? (
+                  <div className="flex flex-col items-center justify-center gap-2 mt-20">
+                    <div className="animate-spin h-8 w-8 border-3 border-orange-500 border-t-transparent rounded-full"></div>
+                    <p className="text-orange-500 font-black uppercase tracking-widest text-[10px]">Cargando estado...</p>
+                  </div>
+                ) : (
+                  <div
+                    ref={containerRef}
+                    className="relative mx-auto w-full"
+                    style={{ height: 'max-content' }}
+                  >
+                    <img
+                      src={zone.image}
+                      className="block w-full h-auto opacity-90 dark:opacity-70 dark:brightness-90 transition-opacity"
+                      alt={zone.name}
+                    />
+                    <div
+                      className="absolute top-0 left-0 w-full h-full"
+                      style={{
+                        transform: `scale(${mapScale * (zone.globalScale || 1)}) translate(${(zone.offsetX || 0) + (tweaks.globalX || 0)}px, ${(zone.offsetY || 0) + (tweaks.globalY || 0)}px)`,
+                        transformOrigin: 'top left',
+                        width: '1400px',
+                        height: `${mapScale > 0 ? ((tweaks.squish || 0.55) / mapScale) * 100 : 100}%`
+                      }}
+                    >
+                      {zone.rows.map(row => {
+                        const rowTweaks = tweaks.rows?.[row.id] || { size: 1.0, spacing: 1.0, xOffset: 0, yOffset: 0 };
+                        return (
+                          <div
+                            key={row.id}
+                            className="absolute"
+                            style={{
+                              left: `${row.x + (rowTweaks.xOffset || 0)}%`,
+                              top: `${row.y + (rowTweaks.yOffset || 0)}%`,
+                              transform: `rotate(${row.rotation}deg) scale(${row.rowScale})`,
+                              transformOrigin: 'top left'
+                            }}
+                          >
+                            {row.slots.map(slot => {
+                              const invRotation = row.textRotation ? row.textRotation : `-${row.rotation}deg`;
+                              const occ = occupancy.find(o => o.ID_Calzo === slot.id);
+                              const isFixed = occ?.Is_Fixed === 1;
+                              const isTempReserved = !!occ?.Estado_Reserva && !isFixed;
+                              const isOccupied = isFixed || isTempReserved;
+                              const isDiscapSlot = slot.label === 'Discap.';
+                              const isSelected = selectedSlot?.id === slot.id;
+
+                              // Lógica de bloqueo según discapacidad
+                              let canSelect = false;
+                              if (employee.discapacidad) {
+                                canSelect = isDiscapSlot && !isOccupied;
+                              } else {
+                                canSelect = !isDiscapSlot && !isOccupied && slot.status !== 'forbidden' && slot.status !== 'label' && slot.status !== 'danger';
+                              }
+
+                              // Lógica de colores Dinámica
+                              let bgColor = 'rgba(156, 163, 175, 0.4)'; // Gris por defecto
+                              
+                              if (employee.discapacidad) {
+                                if (isSelected) bgColor = '#ff7700'; // Naranja selección
+                                else if (isDiscapSlot && !isOccupied) bgColor = '#3b82f6'; // AZUL: Disponible para ellos
+                                else if (isOccupied) bgColor = 'rgba(239, 68, 68, 0.9)'; // ROJO: Ya asignado
+                                else bgColor = 'rgba(156, 163, 175, 0.4)'; // GRIS: Calzo común (No disponible)
+                              } else {
+                                // Nomenclatura Estándar
+                                if (isSelected) bgColor = '#ff7700';
+                                else if (isFixed) bgColor = 'rgba(239, 68, 68, 0.9)';
+                                else if (isTempReserved) bgColor = 'rgba(234, 179, 8, 0.8)';
+                                else if (slot.status === 'forbidden' || isDiscapSlot) bgColor = 'rgba(0,0,0,0.6)';
+                                else if (slot.status === 'danger') bgColor = 'rgba(220, 38, 38, 0.3)';
+                              }
+
+                              if (slot.status === 'label') bgColor = 'transparent';
+
+                              return (
+                                <button
+                                  key={slot.id}
+                                  type="button"
+                                  onClick={() => canSelect && slot.status !== 'label' && setSelectedSlot(slot)}
+                                  disabled={!canSelect || slot.status === 'label'}
+                                  className={`absolute flex items-center justify-center transition-all ${canSelect ? 'hover:scale-105 cursor-pointer shadow-md' : 'cursor-default opacity-60'} ${isSelected ? 'ring-4 ring-orange-500 ring-offset-2 z-50 shadow-2xl' : ''
+                                    } ${isTempReserved ? 'animate-pulse' : ''}`}
+                                  style={{
+                                    left: `${slot.offsetX * (rowTweaks.spacing || 1)}px`,
+                                    top: `${slot.offsetY}px`,
+                                    width: `${slot.width * (rowTweaks.size || 1)}px`,
+                                    height: `${slot.height * (rowTweaks.size || 1)}px`,
+                                    backgroundColor: bgColor,
+                                    border: isSelected ? '3px solid white' : (slot.status === 'label' ? 'none' : '1px solid rgba(255,255,255,0.4)'),
+                                    borderRadius: slot.status === 'label' ? '0px' : '4px',
+                                    zIndex: isSelected ? 10 : 1
+                                  }}
+                                  title={isFixed ? `Calzo Fijo de ${occ.Nombre_Fijo}` : isDiscapSlot ? 'Calzo Preferencial Discapacidad' : `Calzo ${slot.label}`}
+                                >
+                                  <span
+                                    className={`text-[11px] font-black pointer-events-none drop-shadow-md ${isDiscapSlot ? (employee.discapacidad && !isOccupied ? 'text-white' : 'text-blue-200') : 'text-white'}`}
+                                    style={{
+                                      color: slot.status === 'label' ? 'rgba(255,255,255,0.8)' : undefined,
+                                      transform: `rotate(${invRotation})`
+                                    }}
+                                  >
+                                    {isDiscapSlot ? '♿' : slot.label}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Footer */}
