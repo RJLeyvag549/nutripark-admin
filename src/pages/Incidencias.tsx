@@ -29,6 +29,7 @@ export default function Incidencias() {
   const [submitting, setSubmitting] = useState(false);
   const [selectedIncidencia, setSelectedIncidencia] = useState<Incidencia | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showNomenclature, setShowNomenclature] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // Para forzar re-renderizado limpio
 
   const tableRef = useRef<HTMLTableElement>(null);
@@ -121,9 +122,9 @@ export default function Incidencias() {
         },
         pageLength: 10,
         stateSave: true,
-        order: [[2, 'desc']], // Ordenar por fecha desc por defecto
+        order: [[3, 'desc']], // Ordenar por fecha desc por defecto
         columnDefs: [
-          { orderable: false, targets: [4] } // Botón de acción no ordenable
+          { orderable: false, targets: [5] } // Botón de acción no ordenable
         ]
       });
     }
@@ -212,9 +213,17 @@ export default function Incidencias() {
         .dt-paging-button.current { background: #ff7700 !important; border-color: #ff7700 !important; color: white !important; border-radius: 8px !important; }
       `}</style>
 
-      <div className="mb-8">
-        <h1 className="text-3xl font-black tracking-tight uppercase italic text-orange-500">Historial de Incidencias</h1>
-        <p className="text-[var(--text-muted)] text-sm font-bold uppercase tracking-widest">Registro y gestión de eventos reportados en planta</p>
+      <div className="mb-8 flex justify-between items-end">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight uppercase italic text-orange-500">Historial de Incidencias</h1>
+          <p className="text-[var(--text-muted)] text-sm font-bold uppercase tracking-widest">Registro y gestión de eventos reportados en planta</p>
+        </div>
+        <button
+          onClick={() => setShowNomenclature(true)}
+          className="flex items-center gap-2 bg-[var(--bg-main)] border border-[var(--border-color)] hover:bg-orange-500/10 hover:text-orange-500 text-[var(--text-main)] px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all shadow-sm"
+        >
+          <AlertTriangle size={14} /> Nomenclatura
+        </button>
       </div>
 
       <div className="relative min-h-[400px]">
@@ -230,6 +239,7 @@ export default function Incidencias() {
           <table ref={tableRef} className="display row-border stripe w-full">
             <thead>
               <tr>
+                <th>ID</th>
                 <th>RUT Empleado</th>
                 <th>Categoría</th>
                 <th>Fecha Reporte</th>
@@ -240,6 +250,7 @@ export default function Incidencias() {
             <tbody>
               {incidencias.map((inc) => (
                 <tr key={inc.idIncidencia} className={!inc.visto ? 'bg-orange-500/5 font-bold' : ''}>
+                  <td className="text-orange-500 font-black">#{inc.idIncidencia}</td>
                   <td className="font-bold">
                     {!inc.visto && <span className="inline-block w-2 h-2 bg-orange-500 rounded-full mr-2 animate-pulse"></span>}
                     {inc.idEmpleado}
@@ -351,6 +362,62 @@ export default function Incidencias() {
                   {submitting ? 'PROCESANDO...' : <><Clock size={16} /> REABRIR INCIDENCIA (PENDIENTE)</>}
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Nomenclatura */}
+      {showNomenclature && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-[30px] shadow-2xl w-full max-w-4xl overflow-hidden relative">
+            <div className="p-6 border-b border-[var(--border-color)] bg-[var(--bg-main)]/50 flex justify-between items-center">
+              <h2 className="text-xl font-black text-[var(--text-main)] uppercase tracking-tight flex items-center gap-2">
+                <AlertTriangle size={20} className="text-orange-500" /> Nomenclatura de Categorías
+              </h2>
+              <button
+                onClick={() => setShowNomenclature(false)}
+                className="w-8 h-8 hover:bg-red-500/10 hover:text-red-500 text-[var(--text-muted)] rounded-full flex items-center justify-center transition-all"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[85vh] overflow-y-auto custom-scrollbar">
+              <div className="bg-[var(--bg-main)] p-4 rounded-xl border border-[var(--border-color)] flex flex-col justify-between">
+                <div>
+                  <p className="font-bold text-orange-500 mb-1 text-sm uppercase">ocupado</p>
+                  <p className="font-bold text-[var(--text-main)] text-xs mb-2">Calzo Ocupado</p>
+                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">El calzo asignado está siendo ocupado por un vehículo no autorizado.</p>
+                </div>
+              </div>
+              <div className="bg-[var(--bg-main)] p-4 rounded-xl border border-[var(--border-color)] flex flex-col justify-between">
+                <div>
+                  <p className="font-bold text-orange-500 mb-1 text-sm uppercase">prohibido</p>
+                  <p className="font-bold text-[var(--text-main)] text-xs mb-2">Zona Prohibida</p>
+                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">Vehículo estacionado en áreas amarillas, salidas de emergencia o zonas restringidas.</p>
+                </div>
+              </div>
+              <div className="bg-[var(--bg-main)] p-4 rounded-xl border border-[var(--border-color)] flex flex-col justify-between">
+                <div>
+                  <p className="font-bold text-orange-500 mb-1 text-sm uppercase">obstruccion</p>
+                  <p className="font-bold text-[var(--text-main)] text-xs mb-2">Obstrucción</p>
+                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">Vehículo mal estacionado que bloquea el paso o impide la salida de otros calzos.</p>
+                </div>
+              </div>
+              <div className="bg-[var(--bg-main)] p-4 rounded-xl border border-[var(--border-color)] flex flex-col justify-between">
+                <div>
+                  <p className="font-bold text-orange-500 mb-1 text-sm uppercase">infraestructura</p>
+                  <p className="font-bold text-[var(--text-main)] text-xs mb-2">Problema de Planta</p>
+                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">Daños en baches, pintura, iluminación o barreras en la zona de parqueo.</p>
+                </div>
+              </div>
+              <div className="bg-[var(--bg-main)] p-4 rounded-xl border border-[var(--border-color)] flex flex-col justify-between lg:col-span-1">
+                <div>
+                  <p className="font-bold text-orange-500 mb-1 text-sm uppercase">otro</p>
+                  <p className="font-bold text-[var(--text-main)] text-xs mb-2">Otros Sucesos</p>
+                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">Cualquier otro tipo de incidente reportado que no entra en las categorías anteriores.</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
