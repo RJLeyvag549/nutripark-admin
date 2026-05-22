@@ -195,7 +195,7 @@ export default function Visitas() {
   };
 
   return (
-    <div className="p-4 md:p-8 min-h-screen bg-[var(--bg-main)] text-[var(--text-main)] employees-page">
+    <div className="page-content text-[var(--text-main)] employees-page">
       <style>{`
         .employees-page .dt-container { color: var(--text-main) !important; font-family: 'Inter', sans-serif; width: 100% !important; }
         .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 10px; border-radius: 20px; }
@@ -248,27 +248,30 @@ export default function Visitas() {
         </div>
       )}
 
-      <div className="mb-8">
-        <h1 className="text-3xl font-black tracking-tight uppercase italic text-orange-500">Gestión de Visitas</h1>
-        <p className="text-[var(--text-muted)] text-sm font-bold uppercase tracking-widest">Control centralizado de acceso para invitados</p>
+      <div className="mb-6 sm:mb-8">
+        <h1 className="page-title">Gestión de Visitas</h1>
+        <p className="page-subtitle">Control centralizado de acceso para invitados</p>
       </div>
 
-      <div className="flex gap-2 mb-6 p-1.5 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-[22px] w-max shadow-lg">
+      <div className="flex flex-wrap gap-2 mb-6 p-1.5 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-[22px] w-full sm:w-max shadow-lg">
         <button
           onClick={() => setActiveTab('pendientes')}
-          className={`tab-btn ${activeTab === 'pendientes' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' : 'text-[var(--text-muted)] hover:bg-[var(--bg-main)]'}`}
+          className={`tab-btn flex-1 sm:flex-none text-center ${activeTab === 'pendientes' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' : 'text-[var(--text-muted)] hover:bg-[var(--bg-main)]'}`}
         >
-          Solicitudes Pendientes ({visitasPendientes.length})
+          <span className="hidden sm:inline">Solicitudes Pendientes</span>
+          <span className="sm:hidden">Pendientes</span>
+          {' '}({visitasPendientes.length})
         </button>
         <button
           onClick={() => setActiveTab('historial')}
-          className={`tab-btn ${activeTab === 'historial' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' : 'text-[var(--text-muted)] hover:bg-[var(--bg-main)]'}`}
+          className={`tab-btn flex-1 sm:flex-none text-center ${activeTab === 'historial' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' : 'text-[var(--text-muted)] hover:bg-[var(--bg-main)]'}`}
         >
-          Historial de Solicitudes
+          <span className="hidden sm:inline">Historial de Solicitudes</span>
+          <span className="sm:hidden">Historial</span>
         </button>
       </div>
 
-      <div className="bg-[var(--bg-card)] p-6 rounded-[40px] border border-[var(--border-color)] shadow-2xl overflow-hidden h-auto">
+      <div className="bg-[var(--bg-card)] p-4 sm:p-6 rounded-[40px] border border-[var(--border-color)] shadow-2xl overflow-hidden h-auto">
         {loading && visitasPendientes.length === 0 && visitasHistorial.length === 0 ? (
           <div className="py-20 flex justify-center">
             <div className="animate-spin h-10 w-10 border-4 border-orange-500 border-t-transparent rounded-full"></div>

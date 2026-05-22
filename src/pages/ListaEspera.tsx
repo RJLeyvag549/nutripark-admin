@@ -300,7 +300,7 @@ export default function ListaEspera() {
   };
 
   return (
-    <div className="p-8 min-h-screen bg-[var(--bg-main)] text-[var(--text-main)] employees-page">
+    <div className="page-content text-[var(--text-main)] employees-page">
       <style>{`
         .employees-page .dt-container { color: var(--text-main) !important; font-family: 'Inter', sans-serif; }
         table.dataTable { background-color: var(--bg-card) !important; border-radius: 20px; overflow: hidden; border: 1px solid var(--border-color) !important; margin-top: 20px !important; }
@@ -311,19 +311,20 @@ export default function ListaEspera() {
         .dt-paging-button.current { color: #ff7700 !important; text-decoration: underline; }
       `}</style>
 
-      <div className="flex justify-between items-center mb-8">
+      <div className="page-header">
         <div>
-          <h1 className="text-3xl font-black tracking-tight uppercase italic text-orange-500">Lista de Espera</h1>
-          <p className="text-[var(--text-muted)] text-sm font-bold uppercase tracking-widest">Gestión administrativa y asignación excepcional de cupos</p>
+          <h1 className="page-title">Lista de Espera</h1>
+          <p className="page-subtitle">Gestión administrativa y asignación excepcional de cupos</p>
         </div>
       </div>
 
-      <div className="bg-[var(--bg-card)] p-6 rounded-[35px] border border-[var(--border-color)] shadow-2xl overflow-hidden">
+      <div className="bg-[var(--bg-card)] p-4 sm:p-6 rounded-[35px] border border-[var(--border-color)] shadow-2xl overflow-hidden">
         {loading ? (
           <div className="py-20">
             <PageLoader message="Sincronizando con el servidor..." />
           </div>
         ) : (
+          <div className="table-responsive">
           <table id="waitlistTable" ref={tableRef} className="display row-border stripe w-full">
             <thead>
               <tr>
@@ -361,6 +362,7 @@ export default function ListaEspera() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
@@ -370,7 +372,7 @@ export default function ListaEspera() {
           <div className={`bg-[var(--bg-card)] border border-[var(--border-color)] rounded-[40px] shadow-2xl overflow-hidden transition-all duration-300 flex flex-col my-auto ${modalStep === 1 ? 'w-full max-w-4xl' : 'w-full max-w-5xl'}`}>
 
             {/* Header */}
-            <div className="p-8 border-b border-[var(--border-color)] flex items-center bg-[var(--bg-main)]/50 relative">
+            <div className="p-5 sm:p-8 border-b border-[var(--border-color)] flex items-center bg-[var(--bg-main)]/50 relative">
               {/* Back Button (Step 2) */}
               {modalStep === 2 && (
                 <button
@@ -383,7 +385,7 @@ export default function ListaEspera() {
               )}
 
               <div className="flex-1 flex flex-col items-center text-center">
-                <h3 className="text-3xl font-black uppercase tracking-tighter italic">
+                <h3 className="text-xl sm:text-3xl font-black uppercase tracking-tighter italic px-10 sm:px-0">
                   {modalStep === 1 ? 'Seleccionar Zona' : `Zona: ${selectedZone?.name}`}
                 </h3>
                 <div className="flex items-center gap-3 mt-2">
@@ -421,31 +423,26 @@ export default function ListaEspera() {
                             onClick={() => handleSelectZone(avail)}
                             className={`w-full group p-4 rounded-3xl border transition-all hover:scale-[1.01] active:scale-98 ${isOriginal ? 'bg-orange-500/5 border-orange-500/30 ring-1 ring-orange-500/20 shadow-lg shadow-orange-500/5' : 'bg-[var(--bg-main)] border-[var(--border-color)] hover:border-orange-500/50 shadow-sm'}`}
                           >
-                            <div className="grid grid-cols-[auto_260px_1fr_auto] items-center gap-8 w-full">
-                              {/* Icon Column */}
-                              <div className={`p-2.5 rounded-2xl ${isOriginal ? 'bg-orange-500 text-white' : 'bg-slate-800 text-slate-400 group-hover:bg-orange-500 group-hover:text-white transition-colors'}`}>
-                                <MapPin size={18} />
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 w-full min-w-0">
+                              <div className="flex items-center gap-4 min-w-0 flex-1">
+                                <div className={`p-2.5 rounded-2xl shrink-0 ${isOriginal ? 'bg-orange-500 text-white' : 'bg-slate-800 text-slate-400 group-hover:bg-orange-500 group-hover:text-white transition-colors'}`}>
+                                  <MapPin size={18} />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-black text-base sm:text-lg uppercase tracking-tighter text-left truncate">{avail.nombreZona}</p>
+                                  <span className={`inline-block mt-2 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${isOriginal ? 'bg-orange-500/20 text-orange-500 border border-orange-500/30' : 'bg-slate-500/10 text-[var(--text-muted)] opacity-60'}`}>
+                                    {isOriginal ? 'Solicitada Originalmente' : 'Zona Alternativa'}
+                                  </span>
+                                </div>
                               </div>
-
-                              {/* Name Column */}
-                              <p className="font-black text-lg uppercase tracking-tighter text-left">{avail.nombreZona}</p>
-
-                              {/* Status Column */}
-                              <div className="flex justify-start">
-                                <span className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full ${isOriginal ? 'bg-orange-500/20 text-orange-500 border border-orange-500/30' : 'bg-slate-500/10 text-[var(--text-muted)] opacity-60'}`}>
-                                  {isOriginal ? 'Solicitada Originalmente' : 'Zona Alternativa'}
-                                </span>
-                              </div>
-
-                              {/* Info Column */}
-                              <div className="flex items-center gap-8">
+                              <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0">
                                 <div className="text-right">
                                   <p className={`text-2xl font-black ${avail.disponibles > 0 ? 'text-green-500' : 'text-red-500'}`}>
                                     {avail.disponibles}
                                   </p>
                                   <p className="text-[9px] font-black opacity-40 uppercase">Libres</p>
                                 </div>
-                                <ChevronRight className="text-[var(--text-muted)] group-hover:text-orange-500 transition-colors" />
+                                <ChevronRight className="text-[var(--text-muted)] group-hover:text-orange-500 transition-colors shrink-0" />
                               </div>
                             </div>
                           </button>

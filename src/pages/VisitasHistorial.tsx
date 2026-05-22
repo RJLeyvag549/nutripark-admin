@@ -137,7 +137,7 @@ export default function VisitasHistorial() {
   };
 
   return (
-    <div className="p-4 md:p-8 min-h-screen bg-[var(--bg-main)] text-[var(--text-main)] employees-page">
+    <div className="page-content text-[var(--text-main)] employees-page">
       <style>{`
         .employees-page .dt-container { color: var(--text-main) !important; font-family: 'Inter', sans-serif; width: 100% !important; }
         .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 20px; border-radius: 15px; }
@@ -150,10 +150,10 @@ export default function VisitasHistorial() {
         .dt-info { color: var(--text-muted) !important; font-size: 0.85rem; }
       `}</style>
 
-      <div className="flex justify-between items-center mb-6">
+      <div className="page-header">
         <div>
-          <h1 className="text-2xl md:text-3xl font-black tracking-tight uppercase">Seguimiento de Visitas</h1>
-          <p className="text-[var(--text-muted)] text-sm md:text-base">Control operativo de visitas aprobadas</p>
+          <h1 className="page-title normal-case sm:uppercase">Seguimiento de Visitas</h1>
+          <p className="page-subtitle normal-case tracking-normal sm:tracking-widest">Control operativo de visitas aprobadas</p>
         </div>
       </div>
 

@@ -25,3 +25,54 @@
     color: var(--text-main);
   }
 }
+
+@layer utilities {
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .page-content {
+    @apply w-full min-w-0;
+  }
+
+  .page-header {
+    @apply flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8;
+  }
+
+  .page-title {
+    @apply text-2xl sm:text-3xl font-black tracking-tight uppercase italic text-orange-500;
+  }
+
+  .page-subtitle {
+    @apply text-[var(--text-muted)] text-xs sm:text-sm font-bold uppercase tracking-widest;
+  }
+}
+
+/* DataTables: controles apilados en ventanas estrechas (PC reducido) */
+@media (max-width: 900px) {
+  .employees-page .dt-layout-row:first-child {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+
+  .employees-page .dt-length {
+    margin-right: 0 !important;
+  }
+
+  .employees-page .dt-layout-cell.dt-layout-end {
+    flex-wrap: wrap !important;
+    justify-content: flex-start !important;
+  }
+}

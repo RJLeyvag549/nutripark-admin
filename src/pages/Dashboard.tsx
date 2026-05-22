@@ -169,18 +169,18 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex flex-col xl:flex-row gap-6 items-start transition-all duration-700 ease-in-out">
+    <div className="page-content flex flex-col xl:flex-row gap-4 xl:gap-6 items-start transition-all duration-700 ease-in-out">
       {loading && <PageLoader message="Sincronizando calzos..." />}
 
-      <div className="flex flex-col space-y-6 relative flex-1 w-full">
+      <div className="flex flex-col space-y-4 sm:space-y-6 relative flex-1 w-full min-w-0">
 
         <div
           ref={mapContainerRef}
-          className="bg-[var(--bg-card)] rounded-3xl shadow-sm border border-[var(--border-color)] overflow-x-hidden flex-1 p-4"
+          className="bg-[var(--bg-card)] rounded-3xl shadow-sm border border-[var(--border-color)] overflow-x-hidden flex-1 p-3 sm:p-4 min-w-0"
         >
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4 mb-4">
 
-            <div className="bg-[var(--bg-main)] rounded-2xl border border-[var(--border-color)] p-2 px-6 flex items-center space-x-6 min-w-[400px] justify-between shadow-sm">
+            <div className="bg-[var(--bg-main)] rounded-2xl border border-[var(--border-color)] p-2 px-4 sm:px-6 flex items-center space-x-4 sm:space-x-6 w-full min-w-0 max-w-full lg:max-w-md justify-between shadow-sm">
               <button
                 onClick={handlePrev}
                 className="p-2 bg-[var(--bg-card)] hover:bg-[var(--bg-main)] text-[var(--text-main)] rounded-xl transition-colors shadow-sm"
@@ -200,7 +200,7 @@ export default function Dashboard() {
               </button>
             </div>
 
-            <div className="bg-[#1E3A8A] rounded-2xl shadow-sm p-3 px-6 flex items-center space-x-6 border border-blue-400/20">
+            <div className="bg-[#1E3A8A] rounded-2xl shadow-sm p-3 px-4 sm:px-6 flex flex-wrap items-center justify-center gap-3 sm:gap-6 border border-blue-400/20 w-full lg:w-auto">
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 rounded-full bg-gray-300"></div>
                 <span className="text-xs font-bold text-white uppercase tracking-wider">Libre</span>
@@ -285,7 +285,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="w-full xl:w-[420px] bg-[var(--bg-card)] rounded-3xl shadow-sm border border-[var(--border-color)] flex flex-col overflow-hidden shrink-0">
+      <div className="w-full xl:w-[420px] xl:max-w-[420px] bg-[var(--bg-card)] rounded-3xl shadow-sm border border-[var(--border-color)] flex flex-col overflow-hidden shrink-0 min-w-0">
 
         <div className="p-4 bg-[var(--bg-main)] border-b border-[var(--border-color)]">
           <div className="flex items-center justify-between mb-2">

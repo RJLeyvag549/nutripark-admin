@@ -3,7 +3,7 @@ import PageLoader from '../components/PageLoader';
 import {
   Download, FileText, BarChart2, PieChart, Activity, Users, AlertTriangle,
   Calendar, Clock, CheckCircle2, Shield, Search, ChevronLeft, ChevronRight,
-  Award
+  Award, UserX, AlertCircle, Unlock
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
@@ -16,55 +16,23 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { ZONES } from '../constants/Zones';
 
-// --- MOCK DATA PARA DEMOSTRACIÓN VISUAL ---
-const ocupacionHoraPunta = [
-  { hora: '07:00', zonaA: 30, zonaB: 20 },
-  { hora: '08:00', zonaA: 85, zonaB: 60 },
-  { hora: '09:00', zonaA: 100, zonaB: 95 },
-  { hora: '10:00', zonaA: 98, zonaB: 90 },
-  { hora: '11:00', zonaA: 85, zonaB: 80 },
-  { hora: '12:00', zonaA: 70, zonaB: 65 },
-  { hora: '13:00', zonaA: 60, zonaB: 50 },
-  { hora: '14:00', zonaA: 85, zonaB: 75 },
-  { hora: '15:00', zonaA: 90, zonaB: 85 },
-  { hora: '16:00', zonaA: 95, zonaB: 90 },
-  { hora: '17:00', zonaA: 60, zonaB: 40 },
-  { hora: '18:00', zonaA: 30, zonaB: 15 },
-];
-
-const incidenciasPorTipo = [
-  { name: 'Calzo Ocupado', value: 45 },
-  { name: 'Mal Estacionado', value: 25 },
-  { name: 'Choque/Daño', value: 8 },
-  { name: 'Acceso Forzado', value: 12 },
-];
-const COLORS = ['#F97316', '#3B82F6', '#EF4444', '#10B981'];
-
-const metricasCards = {
-  ocupacion: [
-    { title: 'Tasa Promedio Global', value: '78%', icon: Activity, color: 'text-blue-500', bg: 'bg-blue-100 dark:bg-blue-900/30' },
-    { title: 'Hora Punta Diaria', value: '09:00', icon: Clock, color: 'text-orange-500', bg: 'bg-orange-100 dark:bg-orange-900/30' },
-    { title: 'Tiempo Uso Promedio', value: '6h 45m', icon: Clock, color: 'text-green-500', bg: 'bg-green-100 dark:bg-green-900/30' },
-  ],
-  incidencias: [
-    { title: 'Total del Mes', value: '90', icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-100 dark:bg-red-900/30' },
-    { title: 'Tiempo Respuesta Promedio', value: '12 min', icon: Clock, color: 'text-orange-500', bg: 'bg-orange-100 dark:bg-orange-900/30' },
-    { title: 'Zonas Conflictivas', value: 'Zona A', icon: Shield, color: 'text-purple-500', bg: 'bg-purple-100 dark:bg-purple-900/30' },
-  ]
-};
-
 const tabs = [
   { id: 'auditoria', name: 'Auditoría', icon: Shield },
   { id: 'ocupacion', name: 'Ocupación', icon: BarChart2 },
   { id: 'espera', name: 'Lista de Espera', icon: Users },
   { id: 'visitas', name: 'Visitas', icon: CheckCircle2 },
-  { id: 'incidencias', name: 'Incidencias', icon: AlertTriangle },
   { id: 'conducta', name: 'Conducta', icon: Search },
 ];
 
 export default function Reportes() {
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('ocupacion');
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('reportesActiveTab') || 'ocupacion';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('reportesActiveTab', activeTab);
+  }, [activeTab]);
 
   // Custom picker state
   const [showPicker, setShowPicker] = useState(false);
@@ -83,6 +51,58 @@ export default function Reportes() {
     ocupacionHoraPunta: [],
     historialUsoReal: []
   });
+  
+  const [listaesperaData, setListaesperaData] = useState<any>({
+    kpis: { totalInscripciones: 0, tasaAsignacionGlobal: '0%', tasaAbandonoManual: '0%', tasaAbandonoSistema: '0%' },
+    desgloseZonas: [],
+    historial: []
+  });
+  const [waitlistSearch, setWaitlistSearch] = useState('');
+  const [waitlistFilterEstado, setWaitlistFilterEstado] = useState('todos');
+  const [waitlistPage, setWaitlistPage] = useState(1);
+
+  // Estados para Auditoría
+  const [auditoriaSearch, setAuditoriaSearch] = useState('');
+  const [auditoriaFilterAccion, setAuditoriaFilterAccion] = useState('todos');
+  const [auditoriaPage, setAuditoriaPage] = useState(1);
+
+  // Estados para Ocupación
+  const [ocupacionSearch, setOcupacionSearch] = useState('');
+  const [ocupacionFilterZona, setOcupacionFilterZona] = useState('todos');
+  const [ocupacionPage, setOcupacionPage] = useState(1);
+
+  // Estados para Visitas
+  const [visitasData, setVisitasData] = useState<any>({
+    kpis: {
+      totalVisitas: 0,
+      visitasAprobadas: 0,
+      visitasRechazadas: 0,
+      visitasPendientes: 0,
+      tasaAprobacion: '0%',
+      visitasEnPlanta: 0,
+      visitasFinalizadas: 0
+    },
+    rankingAnfitriones: [],
+    rankingZonas: [],
+    historial: []
+  });
+  const [visitasSearch, setVisitasSearch] = useState('');
+  const [visitasFilterEstado, setVisitasFilterEstado] = useState('todos');
+  const [visitasFilterOperativo, setVisitasFilterOperativo] = useState('todos');
+  const [visitasPage, setVisitasPage] = useState(1);
+
+  // Estados para Conducta (Módulo G)
+  const [conductaData, setConductaData] = useState<any>({
+    kpis: { totalReservas: 0, totalNoShows: 0, tasaNoShow: '0.0%', noShowsCalzosFijos: 0, totalLiberaciones: 0, totalAsistidas: 0, totalCalzos: 0, totalCalzosFijos: 0, porcentajeCalzosFijos: '0.0%' },
+    rankingInfractores: [],
+    historial: [],
+    empleados: []
+  });
+  const [conductaSearch, setConductaSearch] = useState('');
+  const [sortByInasistencias, setSortByInasistencias] = useState<'nombre' | 'desc' | 'asc'>('nombre');
+  const [conductaFilterConducta, setConductaFilterConducta] = useState('todos');
+  const [conductaPage, setConductaPage] = useState(1);
+
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
   const zoneKeys = useMemo(() => {
@@ -202,6 +222,51 @@ export default function Reportes() {
       }
     };
 
+    const fetchListaEspera = async () => {
+      try {
+        const token = localStorage.getItem('admin_token');
+        const res = await fetch(`${API_URL}/admin/reportes/listaespera?mes=${selectedMonth}`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setListaesperaData(data);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    const fetchVisitas = async () => {
+      try {
+        const token = localStorage.getItem('admin_token');
+        const res = await fetch(`${API_URL}/admin/reportes/visitas?mes=${selectedMonth}`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setVisitasData(data);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    const fetchConducta = async () => {
+      try {
+        const token = localStorage.getItem('admin_token');
+        const res = await fetch(`${API_URL}/admin/reportes/conducta?mes=${selectedMonth}`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setConductaData(data);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
     setLoading(true);
     if (activeTab === 'auditoria') {
       fetchAuditoria().finally(() => {
@@ -211,11 +276,51 @@ export default function Reportes() {
       fetchOcupacion().finally(() => {
         setTimeout(() => setLoading(false), 500);
       });
+    } else if (activeTab === 'espera') {
+      fetchListaEspera().finally(() => {
+        setTimeout(() => setLoading(false), 500);
+      });
+    } else if (activeTab === 'visitas') {
+      fetchVisitas().finally(() => {
+        setTimeout(() => setLoading(false), 500);
+      });
+    } else if (activeTab === 'conducta') {
+      fetchConducta().finally(() => {
+        setTimeout(() => setLoading(false), 500);
+      });
     } else {
       const timer = setTimeout(() => setLoading(false), 800);
       return () => clearTimeout(timer);
     }
   }, [activeTab, selectedMonth]);
+
+  // Filtros y Paginación de Lista de Espera
+  const filteredWaitlist = useMemo(() => {
+    return (listaesperaData.historial || []).filter((item: any) => {
+      const matchesSearch =
+        item.nombreEmpleado.toLowerCase().includes(waitlistSearch.toLowerCase()) ||
+        item.rutEmpleado.toLowerCase().includes(waitlistSearch.toLowerCase());
+
+      const matchesStatus =
+        waitlistFilterEstado === 'todos' ||
+        item.estado.toLowerCase() === waitlistFilterEstado.toLowerCase();
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [listaesperaData.historial, waitlistSearch, waitlistFilterEstado]);
+
+  const itemsPerPage = 10;
+  const paginatedWaitlist = useMemo(() => {
+    const startIndex = (waitlistPage - 1) * itemsPerPage;
+    return filteredWaitlist.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredWaitlist, waitlistPage]);
+
+  const totalWaitlistPages = Math.ceil(filteredWaitlist.length / itemsPerPage);
+
+  // Reset de página cuando cambian los filtros
+  useEffect(() => {
+    setWaitlistPage(1);
+  }, [waitlistSearch, waitlistFilterEstado]);
 
   const isCurrentMonth = selectedMonth === currentMonthString;
 
@@ -246,6 +351,223 @@ export default function Reportes() {
     }
     return `Calzo #${idNum}`;
   };
+
+  // Filtros y Paginación de Auditoría
+  const filteredAuditoria = useMemo(() => {
+    return (auditoriaData || []).filter((item: any) => {
+      const matchesSearch =
+        (item.nombreUsuario || '').toLowerCase().includes(auditoriaSearch.toLowerCase()) ||
+        (item.rutUsuario || '').toLowerCase().includes(auditoriaSearch.toLowerCase()) ||
+        (item.detalle || '').toLowerCase().includes(auditoriaSearch.toLowerCase());
+
+      const matchesAccion =
+        auditoriaFilterAccion === 'todos' ||
+        item.accion === auditoriaFilterAccion;
+
+      return matchesSearch && matchesAccion;
+    });
+  }, [auditoriaData, auditoriaSearch, auditoriaFilterAccion]);
+
+  const paginatedAuditoria = useMemo(() => {
+    const startIndex = (auditoriaPage - 1) * itemsPerPage;
+    return filteredAuditoria.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredAuditoria, auditoriaPage]);
+
+  const totalAuditoriaPages = Math.ceil(filteredAuditoria.length / itemsPerPage);
+
+  // Listado de acciones únicas para el selector de auditoría
+  const uniqueAcciones = useMemo(() => {
+    const set = new Set<string>();
+    (auditoriaData || []).forEach((item: any) => {
+      if (item.accion) set.add(item.accion);
+    });
+    return Array.from(set);
+  }, [auditoriaData]);
+
+  // Reset de página de auditoría al cambiar filtros
+  useEffect(() => {
+    setAuditoriaPage(1);
+  }, [auditoriaSearch, auditoriaFilterAccion]);
+
+  // Filtros y Paginación de Ocupación (Historial Uso Real)
+  const filteredOcupacion = useMemo(() => {
+    return (ocupacionData.historialUsoReal || []).filter((item: any) => {
+      const matchesSearch =
+        (item.nombreEmpleado || '').toLowerCase().includes(ocupacionSearch.toLowerCase()) ||
+        (item.rutEmpleado || '').toLowerCase().includes(ocupacionSearch.toLowerCase());
+
+      const matchesZona =
+        ocupacionFilterZona === 'todos' ||
+        getCalzoFullLabel(item.idCalzo).toLowerCase().includes(ocupacionFilterZona.toLowerCase());
+
+      return matchesSearch && matchesZona;
+    });
+  }, [ocupacionData.historialUsoReal, ocupacionSearch, ocupacionFilterZona]);
+
+  const paginatedOcupacion = useMemo(() => {
+    const startIndex = (ocupacionPage - 1) * itemsPerPage;
+    return filteredOcupacion.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredOcupacion, ocupacionPage]);
+
+  const totalOcupacionPages = Math.ceil(filteredOcupacion.length / itemsPerPage);
+
+  // Reset de página de ocupación al cambiar filtros
+  useEffect(() => {
+    setOcupacionPage(1);
+  }, [ocupacionSearch, ocupacionFilterZona]);
+
+  // Filtros y Paginación de Visitas
+  const filteredVisitas = useMemo(() => {
+    return (visitasData.historial || []).filter((item: any) => {
+      const matchesSearch =
+        (item.nombreVisitante || '').toLowerCase().includes(visitasSearch.toLowerCase()) ||
+        (item.rutVisitante || '').toLowerCase().includes(visitasSearch.toLowerCase()) ||
+        (item.nombreAnfitrion || '').toLowerCase().includes(visitasSearch.toLowerCase()) ||
+        (item.rutAnfitrion || '').toLowerCase().includes(visitasSearch.toLowerCase());
+
+      const matchesEstado =
+        visitasFilterEstado === 'todos' ||
+        (item.estadoVisita || '').toLowerCase() === visitasFilterEstado.toLowerCase();
+
+      const matchesOperativo =
+        visitasFilterOperativo === 'todos' ||
+        (item.estadoOperativo || '').toLowerCase() === visitasFilterOperativo.toLowerCase();
+
+      return matchesSearch && matchesEstado && matchesOperativo;
+    });
+  }, [visitasData.historial, visitasSearch, visitasFilterEstado, visitasFilterOperativo]);
+
+  const paginatedVisitas = useMemo(() => {
+    const startIndex = (visitasPage - 1) * itemsPerPage;
+    return filteredVisitas.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredVisitas, visitasPage]);
+
+  const totalVisitasPages = Math.ceil(filteredVisitas.length / itemsPerPage);
+
+  // Reset de página de visitas al cambiar filtros
+  useEffect(() => {
+    setVisitasPage(1);
+  }, [visitasSearch, visitasFilterEstado, visitasFilterOperativo]);
+
+  // Filtros y Paginación de Conducta
+  const filteredConducta = useMemo(() => {
+    return (conductaData.historial || []).filter((item: any) => {
+      const searchLower = conductaSearch.toLowerCase();
+      const label = getCalzoFullLabel(item.idCalzo).toLowerCase();
+      const matchesSearch =
+        (item.nombre || '').toLowerCase().includes(searchLower) ||
+        (item.rut || '').toLowerCase().includes(searchLower) ||
+        (item.cargo || '').toLowerCase().includes(searchLower) ||
+        label.includes(searchLower);
+
+      let matchesConducta = true;
+      if (conductaFilterConducta === 'noshow') {
+        matchesConducta = item.estadoReserva === 'Cancelada' && (item.tipoLiberacion === 'No Asistió (Fijo)' || item.tipoLiberacion === 'Sistema');
+      } else if (conductaFilterConducta === 'noshow_fijo') {
+        matchesConducta = item.estadoReserva === 'Cancelada' && item.tipoLiberacion === 'No Asistió (Fijo)';
+      } else if (conductaFilterConducta === 'noshow_compartido') {
+        matchesConducta = item.estadoReserva === 'Cancelada' && item.tipoLiberacion === 'Sistema';
+      } else if (conductaFilterConducta === 'liberacion') {
+        matchesConducta = item.estadoReserva === 'Cancelada' && item.tipoLiberacion === 'Manual';
+      } else if (conductaFilterConducta === 'asistencia') {
+        matchesConducta = item.fechaEntradaReal !== null || item.estadoReserva === 'Finalizada';
+      }
+
+      return matchesSearch && matchesConducta;
+    });
+  }, [conductaData.historial, conductaSearch, conductaFilterConducta]);
+
+  const paginatedConducta = useMemo(() => {
+    const startIndex = (conductaPage - 1) * itemsPerPage;
+    return filteredConducta.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredConducta, conductaPage]);
+
+  // Lista de empleados agrupados por inasistencias
+  // Se construye desde el historial completo del mes (sin el filtro de tipo),
+  // pero sí aplica el conductaSearch para filtrar por nombre/rut/cargo.
+  const empleadosPorInasistencia = useMemo(() => {
+    const map = new Map<string, any>();
+    const searchLower = conductaSearch.toLowerCase();
+
+    // Inicializar el mapa con todos los empleados (o historial como fallback)
+    if (conductaData.empleados && conductaData.empleados.length > 0) {
+      conductaData.empleados.forEach((emp: any) => {
+        const matchesSearch =
+          !searchLower ||
+          (emp.nombre || '').toLowerCase().includes(searchLower) ||
+          (emp.rut || '').toLowerCase().includes(searchLower) ||
+          (emp.cargo || '').toLowerCase().includes(searchLower);
+
+        if (matchesSearch) {
+          map.set(emp.rut, {
+            rut: emp.rut,
+            nombre: emp.nombre,
+            cargo: emp.cargo,
+            idCalzo: emp.idCalzoFijo,
+            totalInasistencias: 0
+          });
+        }
+      });
+    } else {
+      (conductaData.historial || []).forEach((item: any) => {
+        const matchesSearch =
+          !searchLower ||
+          (item.nombre || '').toLowerCase().includes(searchLower) ||
+          (item.rut || '').toLowerCase().includes(searchLower) ||
+          (item.cargo || '').toLowerCase().includes(searchLower);
+
+        if (matchesSearch) {
+          const key = item.rut;
+          if (!map.has(key)) {
+            map.set(key, {
+              rut: item.rut,
+              nombre: item.nombre,
+              cargo: item.cargo,
+              idCalzo: item.idCalzoFijo,
+              totalInasistencias: 0
+            });
+          }
+        }
+      });
+    }
+
+    // Contar inasistencias reales (canceladas por sistema o por no asistir, excluyendo liberaciones manuales)
+    (conductaData.historial || []).forEach((item: any) => {
+      const employee = map.get(item.rut);
+      if (employee) {
+        if (item.estadoReserva === 'Cancelada' && item.tipoLiberacion !== 'Manual') {
+          employee.totalInasistencias++;
+        }
+      }
+    });
+
+    return Array.from(map.values())
+      .sort((a, b) => {
+        if (sortByInasistencias === 'desc') {
+          // Mayor a menor; empate → alfabético
+          if (b.totalInasistencias !== a.totalInasistencias) return b.totalInasistencias - a.totalInasistencias;
+          return a.nombre.localeCompare(b.nombre);
+        } else if (sortByInasistencias === 'asc') {
+          // Menor a mayor; empate → alfabético
+          if (a.totalInasistencias !== b.totalInasistencias) return a.totalInasistencias - b.totalInasistencias;
+          return a.nombre.localeCompare(b.nombre);
+        } else {
+          return a.nombre.localeCompare(b.nombre);
+        }
+      });
+  }, [conductaData.empleados, conductaData.historial, conductaSearch, sortByInasistencias]);
+
+  const paginatedEmpleadosPorInasistencia = useMemo(() => {
+    const startIndex = (conductaPage - 1) * itemsPerPage;
+    return empleadosPorInasistencia.slice(startIndex, startIndex + itemsPerPage);
+  }, [empleadosPorInasistencia, conductaPage]);
+
+  const totalConductaPages = Math.ceil(empleadosPorInasistencia.length / itemsPerPage);
+
+  // Reset de página de conducta al cambiar filtros o cambiar el orden
+  useEffect(() => {
+    setConductaPage(1);
+  }, [conductaSearch, conductaFilterConducta, sortByInasistencias]);
 
   const formatDetalle = (accion: string, detalleStr: string) => {
     try {
@@ -414,6 +736,11 @@ export default function Reportes() {
         const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
         // Dibujamos el encabezado ajustando el ancho completo
         doc.addImage(img, 'PNG', 0, 0, pdfWidth, imgHeight > 40 ? 40 : imgHeight);
+        renderPDF();
+      };
+
+      img.onerror = () => {
+        console.warn("No se pudo cargar encabezado.png para auditoría, generando sin imagen.");
         renderPDF();
       };
 
@@ -643,6 +970,461 @@ export default function Reportes() {
         console.warn("No se pudo cargar encabezado.png, generando sin imagen.");
         renderPDF();
       };
+    } else if (activeTab === 'espera') {
+      const doc = new jsPDF();
+      const img = new Image();
+      img.src = '/encabezado.png';
+
+      const renderPDF = () => {
+        doc.setFontSize(18);
+        doc.text('Reporte Analítico de Lista de Espera', 14, 32);
+        doc.setFontSize(12);
+        doc.text(`Período analizado: ${selectedMonth}`, 14, 38);
+
+        let currentY = 48;
+
+        // 1. Resumen de KPIs
+        doc.setFontSize(12);
+        doc.setTextColor(249, 115, 22);
+        doc.text(`> RESUMEN DE MÉTRICAS CLAVE`, 14, currentY);
+
+        const kpisColumn = ["Métrica", "Valor"];
+        const kpisRows = [
+          ["Total Inscripciones", listaesperaData.kpis.totalInscripciones.toString()],
+          ["Tasa de Asignación Exitosa", listaesperaData.kpis.tasaAsignacionGlobal],
+          ["Tasa de Abandono (Manual)", listaesperaData.kpis.tasaAbandonoManual],
+          ["Tasa de Abandono (Expirada por Sistema)", listaesperaData.kpis.tasaAbandonoSistema]
+        ];
+
+        autoTable(doc, {
+          head: [kpisColumn],
+          body: kpisRows,
+          startY: currentY + 4,
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [249, 115, 22], textColor: [0, 0, 0] },
+          columnStyles: {
+            0: { cellWidth: 100 },
+            1: { cellWidth: 'auto' }
+          }
+        });
+
+        // 2. Desglose por Zona
+        currentY = (doc as any).lastAutoTable.finalY + 12;
+        doc.setFontSize(12);
+        doc.setTextColor(249, 115, 22);
+        doc.text(`> DETALLE DE LISTA DE ESPERA POR ZONA`, 14, currentY);
+
+        const zonesColumn = ["Zona", "Inscripciones", "Asignados", "Cancelados Manual", "Expirados", "Tasa Asig.", "Tasa Abandono"];
+        const zonesRows = (listaesperaData.desgloseZonas || []).map((z: any) => [
+          z.nombreZona,
+          z.total.toString(),
+          z.asignados.toString(),
+          z.canceladosManual.toString(),
+          z.canceladosSistema.toString(),
+          `${z.tasaAsignacion}%`,
+          `${z.tasaAbandonoManual + z.tasaAbandonoSistema}%`
+        ]);
+
+        autoTable(doc, {
+          head: [zonesColumn],
+          body: zonesRows.length > 0 ? zonesRows : [["Sin datos", "-", "-", "-", "-", "-", "-"]],
+          startY: currentY + 4,
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [249, 115, 22], textColor: [0, 0, 0] },
+          columnStyles: {
+            0: { cellWidth: 50 },
+            1: { cellWidth: 20 },
+            2: { cellWidth: 20 },
+            3: { cellWidth: 25 },
+            4: { cellWidth: 20 },
+            5: { cellWidth: 20 },
+            6: { cellWidth: 'auto' }
+          }
+        });
+
+        // 3. Historial de Eventos Completo
+        currentY = (doc as any).lastAutoTable.finalY + 12;
+        if (currentY > 180) {
+          doc.addPage();
+          currentY = 20;
+        }
+
+        doc.setFontSize(12);
+        doc.setTextColor(249, 115, 22);
+        doc.text(`> HISTORIAL DETALLADO DE EVENTOS`, 14, currentY);
+
+        const histColumn = ["Empleado", "Zona Solicitada", "Fecha Inscripción", "Rango Solicitado", "Estado", "Reserva"];
+        const histRows = (listaesperaData.historial || []).map((item: any) => [
+          `${item.nombreEmpleado}\n(RUT: ${item.rutEmpleado})`,
+          item.nombreZona,
+          item.fechaHoraInscripcion,
+          `${item.fechaInicio.split(' ')[1] || item.fechaInicio} -\n${item.fechaFin.split(' ')[1] || item.fechaFin}`,
+          item.estado,
+          item.idReservaGenerada
+        ]);
+
+        autoTable(doc, {
+          head: [histColumn],
+          body: histRows.length > 0 ? histRows : [["Sin registros históricos", "-", "-", "-", "-", "-"]],
+          startY: currentY + 4,
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [249, 115, 22], textColor: [0, 0, 0] },
+          columnStyles: {
+            0: { cellWidth: 45 },
+            1: { cellWidth: 25 },
+            2: { cellWidth: 32 },
+            3: { cellWidth: 32 },
+            4: { cellWidth: 25 },
+            5: { cellWidth: 'auto' }
+          }
+        });
+
+        doc.save(`Reporte_ListaEspera_Nutripark_${selectedMonth}.pdf`);
+      };
+
+      img.onload = () => {
+        const pdfWidth = doc.internal.pageSize.getWidth();
+        const imgProps = doc.getImageProperties(img);
+        const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+        doc.addImage(img, 'PNG', 0, 0, pdfWidth, imgHeight > 40 ? 40 : imgHeight);
+        renderPDF();
+      };
+
+      img.onerror = () => {
+        console.warn("No se pudo cargar encabezado.png, generando sin imagen.");
+        renderPDF();
+      };
+    } else if (activeTab === 'visitas') {
+      const doc = new jsPDF();
+      const img = new Image();
+      img.src = '/encabezado.png';
+
+      const renderPDF = () => {
+        doc.setFontSize(18);
+        doc.text('Reporte de Control de Visitas Externas', 14, 32);
+        doc.setFontSize(12);
+        doc.text(`Período analizado: ${selectedMonth}`, 14, 38);
+
+        let currentY = 48;
+
+        // 1. Resumen de KPIs
+        doc.setFontSize(12);
+        doc.setTextColor(249, 115, 22);
+        doc.text(`> RESUMEN DE INDICADORES CLAVE`, 14, currentY);
+
+        const kpisColumn = ["Métrica", "Valor"];
+        const kpisRows = [
+          ["Total Solicitudes de Visitas", visitasData.kpis.totalVisitas.toString()],
+          ["Tasa de Aprobación de Visitas", visitasData.kpis.tasaAprobacion],
+          ["Visitas Aprobadas", visitasData.kpis.visitasAprobadas.toString()],
+          ["Visitas Rechazadas", visitasData.kpis.visitasRechazadas.toString()],
+          ["Visitas Pendientes de Aprobación", visitasData.kpis.visitasPendientes.toString()],
+          ["Visitas Finalizadas", visitasData.kpis.visitasFinalizadas.toString()]
+        ];
+
+        autoTable(doc, {
+          head: [kpisColumn],
+          body: kpisRows,
+          startY: currentY + 4,
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [249, 115, 22], textColor: [0, 0, 0] },
+          columnStyles: {
+            0: { cellWidth: 100 },
+            1: { cellWidth: 'auto' }
+          }
+        });
+
+        // 2. Ranking de Anfitriones
+        currentY = (doc as any).lastAutoTable.finalY + 12;
+        doc.setFontSize(12);
+        doc.setTextColor(249, 115, 22);
+        doc.text(`> RANKING DE ANFITRIONES (TOP EMPLEADOS)`, 14, currentY);
+
+        const hostColumn = ["Nombre Anfitrión", "RUT", "Cantidad de Visitas Solicitadas"];
+        const hostRows = (visitasData.rankingAnfitriones || []).map((h: any) => [
+          h.nombre,
+          h.rut,
+          h.cantidad.toString()
+        ]);
+
+        autoTable(doc, {
+          head: [hostColumn],
+          body: hostRows.length > 0 ? hostRows : [["Sin datos", "-", "-"]],
+          startY: currentY + 4,
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [249, 115, 22], textColor: [0, 0, 0] },
+          columnStyles: {
+            0: { cellWidth: 80 },
+            1: { cellWidth: 50 },
+            2: { cellWidth: 'auto' }
+          }
+        });
+
+        // 3. Ranking de Calzos
+        currentY = (doc as any).lastAutoTable.finalY + 12;
+        if (currentY > 220) {
+          doc.addPage();
+          currentY = 20;
+        }
+        doc.setFontSize(12);
+        doc.setTextColor(249, 115, 22);
+        doc.text(`> RANKING DE ZONAS (VISITAS APROBADAS Y FINALIZADAS)`, 14, currentY);
+
+        const zonasColumn = ["Zona de Estacionamiento", "Cantidad Aprobada y Finalizada"];
+        const zonasRows = (visitasData.rankingZonas || []).map((z: any) => [
+          z.nombreZona,
+          z.cantidad.toString()
+        ]);
+
+        autoTable(doc, {
+          head: [zonasColumn],
+          body: zonasRows.length > 0 ? zonasRows : [["Sin datos", "-"]],
+          startY: currentY + 4,
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [249, 115, 22], textColor: [0, 0, 0] },
+          columnStyles: {
+            0: { cellWidth: 100 },
+            1: { cellWidth: 'auto' }
+          }
+        });
+
+        // 4. Historial Detallado de Visitas
+        doc.addPage();
+        currentY = 20;
+        doc.setFontSize(12);
+        doc.setTextColor(249, 115, 22);
+        doc.text(`> DETALLE HISTÓRICO DE SOLICITUDES DE VISITAS`, 14, currentY);
+
+        const histColumn = ["Visitante", "Anfitrión", "Calzo / Zona", "Horario", "Solicitud", "Operativo"];
+        const histRows = (visitasData.historial || []).map((item: any) => [
+          `${item.nombreVisitante}\nRUT: ${item.rutVisitante}\nPatente: ${item.matricula}`,
+          `${item.nombreAnfitrion}\nRUT: ${item.rutAnfitrion}`,
+          item.idCalzo !== '-' ? `Calzo ${item.numCalzo}\n(${item.nombreZona})` : '-',
+          `Entrada: ${item.fechaEntrada}\nSalida: ${item.fechaSalida}`,
+          item.estadoVisita,
+          item.estadoOperativo || '-'
+        ]);
+
+        autoTable(doc, {
+          head: [histColumn],
+          body: histRows.length > 0 ? histRows : [["Sin registros de visitas", "-", "-", "-", "-", "-"]],
+          startY: currentY + 4,
+          styles: { fontSize: 7.5 },
+          headStyles: { fillColor: [249, 115, 22], textColor: [0, 0, 0] },
+          columnStyles: {
+            0: { cellWidth: 40 },
+            1: { cellWidth: 35 },
+            2: { cellWidth: 32 },
+            3: { cellWidth: 43 },
+            4: { cellWidth: 20 },
+            5: { cellWidth: 'auto' }
+          }
+        });
+
+        doc.save(`Reporte_Visitas_Nutripark_${selectedMonth}.pdf`);
+      };
+
+      img.onload = () => {
+        const pdfWidth = doc.internal.pageSize.getWidth();
+        const imgProps = doc.getImageProperties(img);
+        const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+        doc.addImage(img, 'PNG', 0, 0, pdfWidth, imgHeight > 40 ? 40 : imgHeight);
+        renderPDF();
+      };
+
+      img.onerror = () => {
+        console.warn("No se pudo cargar encabezado.png, generando sin imagen.");
+        renderPDF();
+      };
+    } else if (activeTab === 'conducta') {
+      const doc = new jsPDF();
+      const img = new Image();
+      img.src = '/encabezado.png';
+
+      const renderPDF = () => {
+        // Calcular ranking completo de empleados con inasistencias ordenados de mayor a menor
+        const map = new Map<string, any>();
+        if (conductaData.empleados && conductaData.empleados.length > 0) {
+          conductaData.empleados.forEach((emp: any) => {
+            map.set(emp.rut, {
+              rut: emp.rut,
+              nombre: emp.nombre,
+              cargo: emp.cargo,
+              idCalzo: emp.idCalzoFijo,
+              totalInasistencias: 0
+            });
+          });
+        } else {
+          (conductaData.historial || []).forEach((item: any) => {
+            const key = item.rut;
+            if (!map.has(key)) {
+              map.set(key, {
+                rut: item.rut,
+                nombre: item.nombre,
+                cargo: item.cargo,
+                idCalzo: item.idCalzoFijo,
+                totalInasistencias: 0
+              });
+            }
+          });
+        }
+
+        (conductaData.historial || []).forEach((item: any) => {
+          const employee = map.get(item.rut);
+          if (employee) {
+            if (item.estadoReserva === 'Cancelada' && item.tipoLiberacion !== 'Manual') {
+              employee.totalInasistencias++;
+            }
+          }
+        });
+
+        const completeRanking = Array.from(map.values()).sort((a, b) => {
+          if (b.totalInasistencias !== a.totalInasistencias) {
+            return b.totalInasistencias - a.totalInasistencias;
+          }
+          return a.nombre.localeCompare(b.nombre);
+        });
+
+        // Filtrar reservas que NO estén en estado 'Pendiente' para el historial detallado
+        const historialFiltrado = (conductaData.historial || []).filter((item: any) => item.estadoReserva !== 'Pendiente');
+
+        doc.setFontSize(18);
+        doc.text('Reporte de Conducta e Inasistencias', 14, 32);
+        doc.setFontSize(12);
+        doc.text(`Período analizado: ${selectedMonth}`, 14, 38);
+
+        let currentY = 48;
+
+        // 1. Resumen de KPIs
+        doc.setFontSize(12);
+        doc.setTextColor(249, 115, 22);
+        doc.text(`> RESUMEN DE INDICADORES DE CONDUCTA`, 14, currentY);
+
+        const kpisColumn = ["Métrica", "Valor"];
+        const kpisRows = [
+          ["Reservas Totales Realizadas", conductaData.kpis.totalReservas.toString()],
+          ["Inasistencias (Ausencias sin Liberación)", conductaData.kpis.totalNoShows.toString()],
+          ["Tasa Global de Inasistencias", conductaData.kpis.tasaNoShow],
+          ["Inasistencias en Calzos Fijos", conductaData.kpis.noShowsCalzosFijos.toString()],
+          ["Liberaciones Manuales (Anticipadas)", conductaData.kpis.totalLiberaciones.toString()],
+          ["Reservas Asistidas (Ocupadas Real)", conductaData.kpis.totalAsistidas.toString()],
+          ["Total de Calzos en Planta", (conductaData.kpis.totalCalzos || 0).toString()],
+          ["Calzos Fijos Asignados", (conductaData.kpis.totalCalzosFijos || 0).toString()],
+          ["Tasa de Asignación Fija", conductaData.kpis.porcentajeCalzosFijos || "0.0%"]
+        ];
+
+        autoTable(doc, {
+          head: [kpisColumn],
+          body: kpisRows,
+          startY: currentY + 4,
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [249, 115, 22], textColor: [0, 0, 0] },
+          columnStyles: {
+            0: { cellWidth: 100 },
+            1: { cellWidth: 'auto' }
+          }
+        });
+
+        // 2. Ranking de Inasistencias de Empleados
+        currentY = (doc as any).lastAutoTable.finalY + 12;
+        doc.setFontSize(12);
+        doc.setTextColor(249, 115, 22);
+        doc.text(`> RANKING DE EMPLEADOS POR INASISTENCIAS`, 14, currentY);
+
+        const rankColumn = ["Posición", "Empleado", "Cargo", "Calzo Fijo", "Inasistencias"];
+        const rankRows = completeRanking.map((item: any, idx: number) => [
+          `#${idx + 1}`,
+          `${item.nombre}\nRUT: ${item.rut}`,
+          item.cargo,
+          item.idCalzo ? getCalzoFullLabel(item.idCalzo) : 'Sin calzo asignado',
+          `${item.totalInasistencias} Inasistencias`
+        ]);
+
+        autoTable(doc, {
+          head: [rankColumn],
+          body: rankRows.length > 0 ? rankRows : [["-", "Sin inasistencias en este mes", "-", "-", "-"]],
+          startY: currentY + 4,
+          styles: { fontSize: 8.5 },
+          headStyles: { fillColor: [249, 115, 22], textColor: [0, 0, 0] },
+          columnStyles: {
+            0: { cellWidth: 20 },
+            1: { cellWidth: 50 },
+            2: { cellWidth: 40 },
+            3: { cellWidth: 45 },
+            4: { cellWidth: 'auto' }
+          }
+        });
+
+        // 3. Historial de Reservas
+        doc.addPage();
+        currentY = 20;
+        doc.setFontSize(12);
+        doc.setTextColor(249, 115, 22);
+        doc.text(`> HISTORIAL DETALLADO DE RESERVAS Y CONDUCTA`, 14, currentY);
+
+        const histColumn = ["Empleado", "Cargo", "Calzo", "Fecha Reserva", "Estado", "Detalle / Acción"];
+        const histRows = historialFiltrado.map((item: any) => {
+          let estadoTxt = item.estadoReserva;
+          if (item.fechaEntradaReal || item.estadoReserva === 'Finalizada') {
+            estadoTxt = 'Asistida';
+          }
+
+          let detalleTxt = '-';
+          if (item.fechaEntradaReal || item.estadoReserva === 'Finalizada') {
+            detalleTxt = `Entró ${new Date(item.fechaEntradaReal || item.fechaEntrada).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}`;
+          } else if (item.estadoReserva === 'Cancelada') {
+            if (item.tipoLiberacion === 'No Asistió (Fijo)') {
+              detalleTxt = 'Inasistencia (Fijo)';
+            } else if (item.tipoLiberacion === 'Sistema') {
+              detalleTxt = 'Inasistencia (Sistema)';
+            } else if (item.tipoLiberacion === 'Manual') {
+              detalleTxt = 'Liberación Manual';
+            } else {
+              detalleTxt = item.tipoLiberacion || 'Cancelada';
+            }
+          }
+
+          return [
+            `${item.nombre}\nRUT: ${item.rut}`,
+            item.cargo,
+            getCalzoFullLabel(item.idCalzo),
+            new Date(item.fechaEntrada).toLocaleDateString('es-CL'),
+            estadoTxt,
+            detalleTxt
+          ];
+        });
+
+        autoTable(doc, {
+          head: [histColumn],
+          body: histRows.length > 0 ? histRows : [["Sin registros de conducta", "-", "-", "-", "-", "-"]],
+          startY: currentY + 4,
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [249, 115, 22], textColor: [0, 0, 0] },
+          columnStyles: {
+            0: { cellWidth: 45 },
+            1: { cellWidth: 35 },
+            2: { cellWidth: 35 },
+            3: { cellWidth: 25 },
+            4: { cellWidth: 20 },
+            5: { cellWidth: 'auto' }
+          }
+        });
+
+        doc.save(`Reporte_Conducta_Nutripark_${selectedMonth}.pdf`);
+      };
+
+      img.onload = () => {
+        const pdfWidth = doc.internal.pageSize.getWidth();
+        const imgProps = doc.getImageProperties(img);
+        const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+        doc.addImage(img, 'PNG', 0, 0, pdfWidth, imgHeight > 40 ? 40 : imgHeight);
+        renderPDF();
+      };
+
+      img.onerror = () => {
+        console.warn("No se pudo cargar encabezado.png, generando sin imagen.");
+        renderPDF();
+      };
     } else {
       alert("La exportación para esta pestaña no está disponible.");
     }
@@ -743,22 +1525,226 @@ export default function Reportes() {
       XLSX.utils.book_append_sheet(workbook, worksheetHistory, "Historial de Uso Real");
 
       XLSX.writeFile(workbook, `Reporte_Ocupacion_Nutripark_${selectedMonth}.xlsx`);
+    } else if (activeTab === 'espera') {
+      const kpisData = [
+        { "Métrica / KPI": "Total Inscripciones", "Valor": listaesperaData.kpis.totalInscripciones },
+        { "Métrica / KPI": "Tasa de Asignación Exitosa", "Valor": listaesperaData.kpis.tasaAsignacionGlobal },
+        { "Métrica / KPI": "Tasa de Abandono (Manual)", "Valor": listaesperaData.kpis.tasaAbandonoManual },
+        { "Métrica / KPI": "Tasa de Abandono (Expirada por Sistema)", "Valor": listaesperaData.kpis.tasaAbandonoSistema },
+        { "Métrica / KPI": "", "Valor": "" }
+      ];
+
+      (listaesperaData.desgloseZonas || []).forEach((z: any) => {
+        kpisData.push({
+          "Métrica / KPI": `Inscripciones Totales en ${z.nombreZona}`,
+          "Valor": z.total
+        });
+        kpisData.push({
+          "Métrica / KPI": `Tasa Asignación en ${z.nombreZona}`,
+          "Valor": `${z.tasaAsignacion}%`
+        });
+        kpisData.push({
+          "Métrica / KPI": `Cancelaciones Manuales en ${z.nombreZona}`,
+          "Valor": z.canceladosManual
+        });
+        kpisData.push({
+          "Métrica / KPI": `Expiraciones Sistema en ${z.nombreZona}`,
+          "Valor": z.canceladosSistema
+        });
+      });
+
+      const historyExport = (listaesperaData.historial || []).map((item: any) => ({
+        "Nombre Empleado": item.nombreEmpleado,
+        "RUT Empleado": item.rutEmpleado,
+        "Zona Solicitada": item.nombreZona,
+        "Fecha Inscripción": item.fechaHoraInscripcion,
+        "Fecha Inicio Rango": item.fechaInicio,
+        "Fecha Fin Rango": item.fechaFin,
+        "Estado Final": item.estado,
+        "ID Reserva Asignada": item.idReservaGenerada
+      }));
+
+      const worksheetKpis = XLSX.utils.json_to_sheet(kpisData);
+      const worksheetHistory = XLSX.utils.json_to_sheet(historyExport);
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheetKpis, "Métricas de Espera");
+      XLSX.utils.book_append_sheet(workbook, worksheetHistory, "Detalle Historial");
+
+      XLSX.writeFile(workbook, `Reporte_ListaEspera_Nutripark_${selectedMonth}.xlsx`);
+    } else if (activeTab === 'visitas') {
+      const kpisData = [
+        { "Métrica / KPI": "Total Solicitudes de Visitas", "Valor": visitasData.kpis.totalVisitas },
+        { "Métrica / KPI": "Tasa de Aprobación", "Valor": visitasData.kpis.tasaAprobacion },
+        { "Métrica / KPI": "Visitas Aprobadas", "Valor": visitasData.kpis.visitasAprobadas },
+        { "Métrica / KPI": "Visitas Rechazadas", "Valor": visitasData.kpis.visitasRechazadas },
+        { "Métrica / KPI": "Visitas Pendientes de Aprobación", "Valor": visitasData.kpis.visitasPendientes },
+        { "Métrica / KPI": "Visitas Finalizadas", "Valor": visitasData.kpis.visitasFinalizadas }
+      ];
+
+      const rankingAnfitrionesExport = (visitasData.rankingAnfitriones || []).map((h: any) => ({
+        "Nombre Anfitrión": h.nombre,
+        "RUT Anfitrión": h.rut,
+        "Cantidad de Solicitudes": h.cantidad
+      }));
+
+      const rankingZonasExport = (visitasData.rankingZonas || []).map((z: any) => ({
+        "Zona": z.nombreZona,
+        "Cantidad Aprobada y Finalizada": z.cantidad
+      }));
+
+      const historyExport = (visitasData.historial || []).map((item: any) => ({
+        "Nombre Visitante": item.nombreVisitante,
+        "RUT Visitante": item.rutVisitante,
+        "Patente / Matrícula": item.matricula,
+        "Nombre Anfitrión": item.nombreAnfitrion,
+        "RUT Anfitrión": item.rutAnfitrion,
+        "Número de Calzo": item.numCalzo,
+        "Zona": item.nombreZona,
+        "Fecha Entrada Programada": item.fechaEntrada,
+        "Fecha Salida Programada": item.fechaSalida,
+        "Estado Solicitud": item.estadoVisita,
+        "Estado Operativo": item.estadoOperativo || '-'
+      }));
+
+      const worksheetKpis = XLSX.utils.json_to_sheet(kpisData);
+      const worksheetHosts = XLSX.utils.json_to_sheet(rankingAnfitrionesExport);
+      const worksheetZonas = XLSX.utils.json_to_sheet(rankingZonasExport);
+      const worksheetHistory = XLSX.utils.json_to_sheet(historyExport);
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheetKpis, "Resumen e Indicadores");
+      XLSX.utils.book_append_sheet(workbook, worksheetHosts, "Ranking de Anfitriones");
+      XLSX.utils.book_append_sheet(workbook, worksheetZonas, "Ranking de Zonas");
+      XLSX.utils.book_append_sheet(workbook, worksheetHistory, "Historial Completo");
+
+      XLSX.writeFile(workbook, `Reporte_Visitas_Nutripark_${selectedMonth}.xlsx`);
+    } else if (activeTab === 'conducta') {
+      const kpisData = [
+        { "Métrica / KPI": "Reservas Totales Realizadas", "Valor": conductaData.kpis.totalReservas },
+        { "Métrica / KPI": "Inasistencias (Ausencias sin Liberación)", "Valor": conductaData.kpis.totalNoShows },
+        { "Métrica / KPI": "Tasa Global de Inasistencias", "Valor": conductaData.kpis.tasaNoShow },
+        { "Métrica / KPI": "Inasistencias en Calzos Fijos", "Valor": conductaData.kpis.noShowsCalzosFijos },
+        { "Métrica / KPI": "Liberaciones Manuales (Anticipadas)", "Valor": conductaData.kpis.totalLiberaciones },
+        { "Métrica / KPI": "Reservas Asistidas (Ocupadas Real)", "Valor": conductaData.kpis.totalAsistidas },
+        { "Métrica / KPI": "Total de Calzos en Planta", "Valor": conductaData.kpis.totalCalzos || 0 },
+        { "Métrica / KPI": "Calzos Fijos Asignados", "Valor": conductaData.kpis.totalCalzosFijos || 0 },
+        { "Métrica / KPI": "Tasa de Asignación Fija", "Valor": conductaData.kpis.porcentajeCalzosFijos || "0.0%" }
+      ];
+
+      // Calcular ranking completo de empleados con inasistencias ordenados de mayor a menor
+      const map = new Map<string, any>();
+      if (conductaData.empleados && conductaData.empleados.length > 0) {
+        conductaData.empleados.forEach((emp: any) => {
+          map.set(emp.rut, {
+            rut: emp.rut,
+            nombre: emp.nombre,
+            cargo: emp.cargo,
+            idCalzo: emp.idCalzoFijo,
+            totalInasistencias: 0
+          });
+        });
+      } else {
+        (conductaData.historial || []).forEach((item: any) => {
+          const key = item.rut;
+          if (!map.has(key)) {
+            map.set(key, {
+              rut: item.rut,
+              nombre: item.nombre,
+              cargo: item.cargo,
+              idCalzo: item.idCalzoFijo,
+              totalInasistencias: 0
+            });
+          }
+        });
+      }
+
+      (conductaData.historial || []).forEach((item: any) => {
+        const employee = map.get(item.rut);
+        if (employee) {
+          if (item.estadoReserva === 'Cancelada' && item.tipoLiberacion !== 'Manual') {
+            employee.totalInasistencias++;
+          }
+        }
+      });
+
+      const completeRanking = Array.from(map.values()).sort((a, b) => {
+        if (b.totalInasistencias !== a.totalInasistencias) {
+          return b.totalInasistencias - a.totalInasistencias;
+        }
+        return a.nombre.localeCompare(b.nombre);
+      });
+
+      const rankingExport = completeRanking.map((item: any, idx: number) => ({
+        "Posición": `#${idx + 1}`,
+        "Nombre Empleado": item.nombre,
+        "RUT Empleado": item.rut,
+        "Cargo": item.cargo,
+        "Calzo Asignado": item.idCalzo ? getCalzoFullLabel(item.idCalzo) : 'Sin calzo asignado',
+        "Inasistencias Registradas": item.totalInasistencias
+      }));
+
+      // Filtrar reservas que NO estén en estado 'Pendiente' para el historial detallado
+      const historialFiltrado = (conductaData.historial || []).filter((item: any) => item.estadoReserva !== 'Pendiente');
+
+      const historialExport = historialFiltrado.map((item: any) => {
+        let estadoTxt = item.estadoReserva;
+        if (item.fechaEntradaReal || item.estadoReserva === 'Finalizada') {
+          estadoTxt = 'Asistida';
+        }
+
+        let detalleTxt = '-';
+        if (item.fechaEntradaReal || item.estadoReserva === 'Finalizada') {
+          detalleTxt = `Entró ${new Date(item.fechaEntradaReal || item.fechaEntrada).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}`;
+        } else if (item.estadoReserva === 'Cancelada') {
+          if (item.tipoLiberacion === 'No Asistió (Fijo)') {
+            detalleTxt = 'Inasistencia (Fijo)';
+          } else if (item.tipoLiberacion === 'Sistema') {
+            detalleTxt = 'Inasistencia (Sistema)';
+          } else if (item.tipoLiberacion === 'Manual') {
+            detalleTxt = 'Liberación Manual';
+          } else {
+            detalleTxt = item.tipoLiberacion || 'Cancelada';
+          }
+        }
+
+        return {
+          "Nombre Empleado": item.nombre,
+          "RUT Empleado": item.rut,
+          "Cargo": item.cargo,
+          "Calzo Reservado": getCalzoFullLabel(item.idCalzo),
+          "Fecha Reserva": new Date(item.fechaEntrada).toLocaleDateString('es-CL'),
+          "Estado Reserva": estadoTxt,
+          "Detalle / Acción": detalleTxt
+        };
+      });
+
+      const worksheetKpis = XLSX.utils.json_to_sheet(kpisData);
+      const worksheetRanking = XLSX.utils.json_to_sheet(rankingExport);
+      const worksheetHistorial = XLSX.utils.json_to_sheet(historialExport);
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheetKpis, "Resumen Conducta");
+      XLSX.utils.book_append_sheet(workbook, worksheetRanking, "Ranking Inasistencias");
+      XLSX.utils.book_append_sheet(workbook, worksheetHistorial, "Historial de Conducta");
+
+      XLSX.writeFile(workbook, `Reporte_Conducta_Nutripark_${selectedMonth}.xlsx`);
     } else {
       alert("La exportación para esta pestaña no está disponible.");
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="page-content space-y-4 sm:space-y-6">
 
       {/* HEADER DE LA PÁGINA */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[var(--bg-card)] p-6 rounded-3xl shadow-sm border border-[var(--border-color)]">
-        <div>
-          <h2 className="text-3xl font-black text-[var(--text-main)] uppercase tracking-tight flex items-center">
-            <PieChart className="mr-3 text-orange-500" size={32} />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[var(--bg-card)] p-4 sm:p-6 rounded-3xl shadow-sm border border-[var(--border-color)]">
+        <div className="min-w-0">
+          <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-main)] uppercase tracking-tight flex flex-wrap items-center gap-2 sm:gap-3">
+            <PieChart className="text-orange-500 shrink-0" size={28} />
             Reportes y Estadísticas
           </h2>
-          <p className="text-[var(--text-muted)] mt-1 ml-11 font-medium">
+          <p className="text-[var(--text-muted)] mt-1 sm:ml-11 font-medium text-sm sm:text-base">
             {getSubTitleText()}
           </p>
         </div>
@@ -893,7 +1879,7 @@ export default function Reportes() {
                   <Activity className="mr-2 text-orange-500 animate-pulse" /> Tendencia de Actividad (Operaciones por Día)
                 </h3>
                 <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height={260} minWidth={0}>
                     <AreaChart data={activityTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorOperaciones" x1="0" y1="0" x2="0" y2="1">
@@ -912,52 +1898,112 @@ export default function Reportes() {
               </div>
             )}
 
-            <div className="bg-[var(--bg-card)] p-6 rounded-3xl shadow-sm border border-[var(--border-color)]">
-              <h3 className="text-lg font-bold text-[var(--text-main)] mb-6 flex items-center">
-                <Shield className="mr-2 text-orange-500" /> Registro de Actividad del Sistema
-              </h3>
+            <div className="bg-[var(--bg-card)] p-6 rounded-3xl shadow-sm border border-[var(--border-color)] space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-[var(--text-main)] flex items-center">
+                    <Shield className="mr-2 text-orange-500" /> Registro de Actividad del Sistema
+                  </h3>
+                  <p className="text-sm text-[var(--text-muted)] font-medium">Buzón de auditoría con operaciones y transacciones administrativas registradas.</p>
+                </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-[var(--border-color)] text-[var(--text-muted)] text-sm uppercase tracking-wider">
-                      <th className="p-4 font-semibold whitespace-nowrap">Fecha y Hora</th>
-                      <th className="p-4 font-semibold whitespace-nowrap">Usuario</th>
-                      <th className="p-4 font-semibold whitespace-nowrap">Acción</th>
-                      <th className="p-4 font-semibold">Detalles</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--border-color)]">
-                    {auditoriaData.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="p-8 text-center text-[var(--text-muted)]">
-                          No hay registros de auditoría para este mes.
-                        </td>
+                {/* Filtros de Tabla */}
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Buscador */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-[var(--text-muted)]" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por usuario o detalle..."
+                      value={auditoriaSearch}
+                      onChange={(e) => setAuditoriaSearch(e.target.value)}
+                      className="pl-10 pr-4 py-2 bg-[var(--bg-body)] border border-[var(--border-color)] rounded-xl text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-orange-500 w-60 font-medium"
+                    />
+                  </div>
+
+                  {/* Selector de Acciones */}
+                  <select
+                    value={auditoriaFilterAccion}
+                    onChange={(e) => setAuditoriaFilterAccion(e.target.value)}
+                    className="px-3 py-2 bg-[var(--bg-body)] dark:bg-[#2a2a2a] border border-[var(--border-color)] dark:border-[#444] rounded-xl text-sm text-[var(--text-main)] dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 font-medium cursor-pointer [&_option]:dark:bg-[#2a2a2a] [&_option]:dark:text-gray-100"
+                  >
+                    <option value="todos">Todas las Acciones</option>
+                    {uniqueAcciones.map((acc) => (
+                      <option key={acc} value={acc}>{acc.replace(/_/g, ' ')}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Contenedor de Tabla */}
+              <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-orange-500/10 border-b border-[var(--border-color)]">
+                        <th className="p-4 font-bold text-orange-500 text-sm whitespace-nowrap">Fecha y Hora</th>
+                        <th className="p-4 font-bold text-orange-500 text-sm whitespace-nowrap">Usuario</th>
+                        <th className="p-4 font-bold text-orange-500 text-sm whitespace-nowrap">Acción</th>
+                        <th className="p-4 font-bold text-orange-500 text-sm">Detalles</th>
                       </tr>
-                    ) : (
-                      auditoriaData.map((item) => (
-                        <tr key={item.idAuditoria} className="hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition-colors">
-                          <td className="p-4 text-sm text-[var(--text-main)] whitespace-nowrap">
-                            {new Date(item.fechaHora).toLocaleString('es-CL')}
-                          </td>
-                          <td className="p-4 whitespace-nowrap">
-                            <div className="font-medium text-[var(--text-main)]">{item.nombreUsuario}</div>
-                            <div className="text-xs text-[var(--text-muted)]">{item.rutUsuario}</div>
-                          </td>
-                          <td className="p-4 whitespace-nowrap">
-                            <span className="bg-orange-500/10 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 px-3 py-1 rounded-full text-xs font-bold inline-block border border-orange-500/20">
-                              {item.accion.replace(/_/g, ' ')}
-                            </span>
-                          </td>
-                          <td className="p-4 text-sm text-[var(--text-muted)] max-w-md">
-                            {formatDetalle(item.accion, item.detalle)}
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border-color)] text-[var(--text-main)]">
+                      {paginatedAuditoria.length > 0 ? (
+                        paginatedAuditoria.map((item: any) => (
+                          <tr key={item.idAuditoria} className="hover:bg-orange-500/5 transition-colors text-sm">
+                            <td className="p-4 text-xs font-semibold text-[var(--text-muted)] whitespace-nowrap">
+                              {new Date(item.fechaHora).toLocaleString('es-CL')}
+                            </td>
+                            <td className="p-4 whitespace-nowrap">
+                              <span className="font-semibold block">{item.nombreUsuario}</span>
+                              <span className="block text-xs text-[var(--text-muted)] font-medium">{item.rutUsuario}</span>
+                            </td>
+                            <td className="p-4 whitespace-nowrap">
+                              <span className="bg-orange-500/10 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400 px-3 py-1 rounded-full text-xs font-extrabold inline-block border border-orange-500/20">
+                                {item.accion.replace(/_/g, ' ')}
+                              </span>
+                            </td>
+                            <td className="p-4 text-xs font-medium text-[var(--text-muted)] max-w-md break-words">
+                              {formatDetalle(item.accion, item.detalle)}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={4} className="p-8 text-center text-[var(--text-muted)] font-medium">
+                            No se encontraron registros de auditoría para esta búsqueda.
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
+
+              {/* Paginación */}
+              {totalAuditoriaPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t border-[var(--border-color)]">
+                  <span className="text-xs text-[var(--text-muted)] font-medium">
+                    Mostrando página {auditoriaPage} de {totalAuditoriaPages} ({filteredAuditoria.length} registros en total)
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      disabled={auditoriaPage === 1}
+                      onClick={() => setAuditoriaPage(p => Math.max(1, p - 1))}
+                      className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-orange-500/10 hover:text-orange-500 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-inherit transition-all"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <button
+                      disabled={auditoriaPage === totalAuditoriaPages}
+                      onClick={() => setAuditoriaPage(p => Math.min(totalAuditoriaPages, p + 1))}
+                      className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-orange-500/10 hover:text-orange-500 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-inherit transition-all"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -978,6 +2024,56 @@ export default function Reportes() {
                 </div>
               ))}
             </div>
+
+            {/* Gráfico de Barras: Tasa de Ocupación por Zona */}
+            {Object.keys(ocupacionData.ocupacionPorZona || {}).length > 0 && (
+              <div className="bg-[var(--bg-card)] p-6 rounded-3xl shadow-sm border border-[var(--border-color)]">
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-[var(--text-main)] flex items-center">
+                    <BarChart2 className="mr-2 text-orange-500" size={20} />
+                    Tasa de Ocupación Promedio por Zona
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-1 font-semibold">
+                    Porcentaje de días en que cada zona tuvo al menos una reserva física completada.
+                  </p>
+                </div>
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height={260} minWidth={0}>
+                    <BarChart
+                      data={Object.entries(ocupacionData.ocupacionPorZona).map(([zona, rate]) => ({ zona, tasa: rate }))}
+                      margin={{ top: 5, right: 20, left: -10, bottom: 60 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
+                      <XAxis
+                        dataKey="zona"
+                        tick={{ fill: 'var(--text-muted)', fontSize: 11, fontWeight: 600 }}
+                        tickLine={false}
+                        axisLine={false}
+                        angle={-30}
+                        textAnchor="end"
+                        interval={0}
+                      />
+                      <YAxis
+                        tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={false}
+                        unit="%"
+                        domain={[0, 'auto']}
+                      />
+                      <RechartsTooltip
+                        contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', borderRadius: '12px', color: 'var(--text-main)' }}
+                        formatter={(value: any) => [`${value}%`, 'Tasa de Ocupación']}
+                      />
+                      <Bar dataKey="tasa" radius={[8, 8, 0, 0]} maxBarSize={64}>
+                        {Object.entries(ocupacionData.ocupacionPorZona).map(([zona], index) => (
+                          <Cell key={zona} fill={getZoneColor(zona, index)} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
 
             {/* Gráfico Principal: Mapa de Calor de Ocupación */}
             <div className="bg-[var(--bg-card)] p-6 rounded-3xl shadow-sm border border-[var(--border-color)] space-y-6">
@@ -1077,10 +2173,41 @@ export default function Reportes() {
 
             {/* Historial de Uso Físico Real */}
             <div className="bg-[var(--bg-card)] p-6 rounded-3xl shadow-sm border border-[var(--border-color)] space-y-4">
-              <div>
-                <h3 className="text-lg font-bold text-[var(--text-main)]">Historial de Uso Físico Real del Mes</h3>
-                <p className="text-sm text-[var(--text-muted)] font-medium">Listado completo de todas las reservas que registraron escaneo QR de ingreso en portería.</p>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-[var(--text-main)]">Historial de Uso Físico Real del Mes</h3>
+                  <p className="text-sm text-[var(--text-muted)] font-medium">Listado completo de todas las reservas que registraron escaneo QR de ingreso en portería.</p>
+                </div>
+
+                {/* Filtros de Tabla */}
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Buscador */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-[var(--text-muted)]" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por RUT o Nombre..."
+                      value={ocupacionSearch}
+                      onChange={(e) => setOcupacionSearch(e.target.value)}
+                      className="pl-10 pr-4 py-2 bg-[var(--bg-body)] border border-[var(--border-color)] rounded-xl text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-orange-500 w-60 font-medium"
+                    />
+                  </div>
+
+                  {/* Selector de Zona */}
+                  <select
+                    value={ocupacionFilterZona}
+                    onChange={(e) => setOcupacionFilterZona(e.target.value)}
+                    className="px-3 py-2 bg-[var(--bg-body)] dark:bg-[#2a2a2a] border border-[var(--border-color)] dark:border-[#444] rounded-xl text-sm text-[var(--text-main)] dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 font-medium cursor-pointer [&_option]:dark:bg-[#2a2a2a] [&_option]:dark:text-gray-100"
+                  >
+                    <option value="todos">Todas las Zonas</option>
+                    {zoneKeys.map((zoneName: string) => (
+                      <option key={zoneName} value={zoneName}>{zoneName}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
+
+              {/* Contenedor de Tabla */}
               <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
@@ -1094,9 +2221,9 @@ export default function Reportes() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--border-color)] text-[var(--text-main)]">
-                      {ocupacionData.historialUsoReal && ocupacionData.historialUsoReal.length > 0 ? (
-                        ocupacionData.historialUsoReal.map((item: any, idx: number) => (
-                          <tr key={idx} className="hover:bg-orange-500/5 transition-colors">
+                      {paginatedOcupacion.length > 0 ? (
+                        paginatedOcupacion.map((item: any, idx: number) => (
+                          <tr key={idx} className="hover:bg-orange-500/5 transition-colors text-sm">
                             <td className="p-4">
                               <span className="font-semibold block">{item.nombreEmpleado}</span>
                               <span className="block text-xs text-[var(--text-muted)] font-medium">{item.rutEmpleado}</span>
@@ -1110,7 +2237,7 @@ export default function Reportes() {
                       ) : (
                         <tr>
                           <td colSpan={5} className="p-8 text-center text-[var(--text-muted)] font-medium">
-                            No hay registros de uso físico real para este período.
+                            No se encontraron registros de uso físico real para esta búsqueda.
                           </td>
                         </tr>
                       )}
@@ -1118,70 +2245,714 @@ export default function Reportes() {
                   </table>
                 </div>
               </div>
+
+              {/* Paginación */}
+              {totalOcupacionPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t border-[var(--border-color)]">
+                  <span className="text-xs text-[var(--text-muted)] font-medium">
+                    Mostrando página {ocupacionPage} de {totalOcupacionPages} ({filteredOcupacion.length} registros en total)
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      disabled={ocupacionPage === 1}
+                      onClick={() => setOcupacionPage(p => Math.max(1, p - 1))}
+                      className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-orange-500/10 hover:text-orange-500 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-inherit transition-all"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <button
+                      disabled={ocupacionPage === totalOcupacionPages}
+                      onClick={() => setOcupacionPage(p => Math.min(totalOcupacionPages, p + 1))}
+                      className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-orange-500/10 hover:text-orange-500 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-inherit transition-all"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {!loading && activeTab === 'incidencias' && (
+        {!loading && activeTab === 'espera' && (
           <div className="space-y-6 animate-fade-in">
-            {/* Tarjetas de Métricas Rápidas */}
+            {/* Tarjetas de KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {metricasCards.incidencias.map((card, idx) => (
-                <div key={idx} className="bg-[var(--bg-card)] p-6 rounded-3xl shadow-sm border border-[var(--border-color)] flex items-center">
-                  <div className={`p-4 rounded-2xl ${card.bg} mr-4`}>
-                    <card.icon className={card.color} size={28} />
-                  </div>
-                  <div>
-                    <p className="text-sm text-[var(--text-muted)] font-medium">{card.title}</p>
-                    <p className="text-2xl font-black text-[var(--text-main)]">{card.value}</p>
-                  </div>
+              <div className="bg-[var(--bg-card)] p-6 rounded-3xl shadow-sm border border-[var(--border-color)] flex items-center">
+                <div className="p-4 rounded-2xl bg-orange-50 dark:bg-orange-900/30 mr-4">
+                  <Users className="text-orange-500" size={28} />
                 </div>
-              ))}
+                <div>
+                  <p className="text-sm text-[var(--text-muted)] font-medium">Inscripciones Totales</p>
+                  <p className="text-2xl font-black text-[var(--text-main)]">{listaesperaData.kpis.totalInscripciones}</p>
+                </div>
+              </div>
+
+              <div className="bg-[var(--bg-card)] p-6 rounded-3xl shadow-sm border border-[var(--border-color)] flex items-center">
+                <div className="p-4 rounded-2xl bg-green-100 dark:bg-green-900/30 mr-4">
+                  <CheckCircle2 className="text-green-500" size={28} />
+                </div>
+                <div>
+                  <p className="text-sm text-[var(--text-muted)] font-medium">Tasa de Asignación (Éxito)</p>
+                  <p className="text-2xl font-black text-[var(--text-main)]">{listaesperaData.kpis.tasaAsignacionGlobal}</p>
+                </div>
+              </div>
+
+              <div className="bg-[var(--bg-card)] p-6 rounded-3xl shadow-sm border border-[var(--border-color)] flex items-center">
+                <div className="p-4 rounded-2xl bg-red-100 dark:bg-red-900/30 mr-4">
+                  <AlertTriangle className="text-red-500" size={28} />
+                </div>
+                <div>
+                  <p className="text-sm text-[var(--text-muted)] font-medium">Tasa de Abandono Total</p>
+                  <p className="text-2xl font-black text-[var(--text-main)]">
+                    {Math.min(100, (parseInt(listaesperaData.kpis.tasaAbandonoManual) || 0) + (parseInt(listaesperaData.kpis.tasaAbandonoSistema) || 0))}%
+                  </p>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5 font-bold">
+                    Manual: {listaesperaData.kpis.tasaAbandonoManual} | Expirada: {listaesperaData.kpis.tasaAbandonoSistema}
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Gráfico Circular: Tipos de Incidencia */}
-              <div className="bg-[var(--bg-card)] p-6 rounded-3xl shadow-sm border border-[var(--border-color)]">
-                <h3 className="text-lg font-bold text-[var(--text-main)] mb-6">Distribución por Tipo de Incidencia</h3>
-                <div className="h-[300px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsPieChart>
-                      <Pie
-                        data={incidenciasPorTipo}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={80}
-                        outerRadius={110}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {incidenciasPorTipo.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip
-                        contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', borderRadius: '12px' }}
-                      />
-                      <Legend iconType="circle" verticalAlign="bottom" height={36} />
-                    </RechartsPieChart>
-                  </ResponsiveContainer>
+            {/* Gráficos */}
+            <div className="w-full">
+              {/* Gráfico de Barras Apilado */}
+              <div className="bg-[var(--bg-card)] p-6 rounded-3xl shadow-sm border border-[var(--border-color)] flex flex-col">
+                <div className="mb-4">
+                  <h3 className="text-lg font-bold text-[var(--text-main)]">Actividad de Lista de Espera por Zona</h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-1 font-semibold">Comparativa del volumen de solicitudes y su resolución (asignado, cancelado o expirado) por zona.</p>
+                </div>
+                <div className="h-[350px] w-full mt-auto">
+                  {listaesperaData.desgloseZonas && listaesperaData.desgloseZonas.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={350} minWidth={0}>
+                      <BarChart data={listaesperaData.desgloseZonas} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
+                        <XAxis dataKey="nombreZona" tick={{ fill: 'var(--text-muted)', fontSize: 11, fontWeight: 600 }} tickLine={false} axisLine={false} />
+                        <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                        <RechartsTooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', borderRadius: '12px', color: 'var(--text-main)' }} />
+                        <Legend iconType="circle" />
+                        <Bar dataKey="asignados" stackId="a" fill="#10B981" name="Asignadas (Éxito)" radius={[0, 0, 0, 0]} />
+                        <Bar dataKey="canceladosManual" stackId="a" fill="#3B82F6" name="Canceladas Manual" radius={[0, 0, 0, 0]} />
+                        <Bar dataKey="canceladosSistema" stackId="a" fill="#EF4444" name="Expiradas por Sistema" radius={[8, 8, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-[var(--text-muted)] font-medium">
+                      Sin datos para graficar.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Tabla de Historial Detallado */}
+            <div className="bg-[var(--bg-card)] p-6 rounded-3xl shadow-sm border border-[var(--border-color)] space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-[var(--text-main)]">Historial Detallado de Lista de Espera</h3>
+                  <p className="text-sm text-[var(--text-muted)] font-medium">Listado de todas las solicitudes inscritas en lista de espera durante el mes.</p>
+                </div>
+
+                {/* Filtros de Tabla */}
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Buscador */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-[var(--text-muted)]" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por RUT o Nombre..."
+                      value={waitlistSearch}
+                      onChange={(e) => setWaitlistSearch(e.target.value)}
+                      className="pl-10 pr-4 py-2 bg-[var(--bg-body)] border border-[var(--border-color)] rounded-xl text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-orange-500 w-60 font-medium"
+                    />
+                  </div>
+
+                  {/* Selector de Estado */}
+                  <select
+                    value={waitlistFilterEstado}
+                    onChange={(e) => setWaitlistFilterEstado(e.target.value)}
+                    className="px-3 py-2 bg-[var(--bg-body)] dark:bg-[#2a2a2a] border border-[var(--border-color)] dark:border-[#444] rounded-xl text-sm text-[var(--text-main)] dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 font-medium cursor-pointer [&_option]:dark:bg-[#2a2a2a] [&_option]:dark:text-gray-100"
+                  >
+                    <option value="todos">Todos los Estados</option>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="asignado">Asignado (Auto)</option>
+                    <option value="completada">Completada (Portero)</option>
+                    <option value="cancelada">Cancelada (Empleado)</option>
+                    <option value="expirada">Expirada (Sistema)</option>
+                  </select>
                 </div>
               </div>
 
-              {/* Simulación de otro gráfico */}
-              <div className="bg-[var(--bg-card)] p-6 rounded-3xl shadow-sm border border-[var(--border-color)] flex flex-col items-center justify-center text-center">
-                <BarChart2 size={48} className="text-gray-300 dark:text-[#333] mb-4" />
-                <h4 className="text-xl font-bold text-[var(--text-main)]">Tendencia de Resoluciones</h4>
-                <p className="text-[var(--text-muted)] mt-2 max-w-sm">
-                  Aquí se mostrará un gráfico de barras comparando los tiempos de respuesta del equipo de seguridad a lo largo del mes.
-                </p>
+              {/* Contenedor de Tabla */}
+              <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-orange-500/10 border-b border-[var(--border-color)]">
+                        <th className="p-4 font-bold text-orange-500 text-sm">Empleado</th>
+                        <th className="p-4 font-bold text-orange-500 text-sm">Zona</th>
+                        <th className="p-4 font-bold text-orange-500 text-sm">Fecha Inscripción</th>
+                        <th className="p-4 font-bold text-orange-500 text-sm">Rango Solicitado</th>
+                        <th className="p-4 font-bold text-orange-500 text-sm">Estado</th>
+                        <th className="p-4 font-bold text-orange-500 text-sm">Reserva</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border-color)] text-[var(--text-main)]">
+                      {paginatedWaitlist.length > 0 ? (
+                        paginatedWaitlist.map((item: any) => (
+                          <tr key={item.idEspera} className="hover:bg-orange-500/5 transition-colors text-sm">
+                            <td className="p-4">
+                              <span className="font-semibold block">{item.nombreEmpleado}</span>
+                              <span className="block text-xs text-[var(--text-muted)] font-medium">{item.rutEmpleado}</span>
+                            </td>
+                            <td className="p-4 font-semibold">{item.nombreZona}</td>
+                            <td className="p-4 text-xs font-semibold text-[var(--text-muted)]">{item.fechaHoraInscripcion}</td>
+                            <td className="p-4 text-xs font-semibold">
+                              <span className="block text-blue-500">{item.fechaInicio.split(' ')[1] || item.fechaInicio}</span>
+                              <span className="block text-orange-500">{item.fechaFin.split(' ')[1] || item.fechaFin}</span>
+                            </td>
+                            <td className="p-4">
+                              {(() => {
+                                let badgeClass = '';
+                                let labelText = item.estado;
+                                if (item.estado === 'Pendiente') {
+                                  badgeClass = 'bg-amber-500/10 text-amber-600 border-amber-500/20';
+                                } else if (item.estado === 'Asignado') {
+                                  badgeClass = 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
+                                  labelText = 'Asignado (Auto)';
+                                } else if (item.estado === 'Completada') {
+                                  badgeClass = 'bg-green-500/10 text-green-600 border-green-500/20';
+                                  labelText = 'Completada (Portero)';
+                                } else if (item.estado === 'Cancelada') {
+                                  badgeClass = 'bg-blue-500/10 text-blue-600 border-blue-500/20';
+                                  labelText = 'Cancelada (Empleado)';
+                                } else if (item.estado === 'Expirada') {
+                                  badgeClass = 'bg-rose-500/10 text-rose-600 border-rose-500/20';
+                                  labelText = 'Expirada (Sistema)';
+                                }
+                                return (
+                                  <span className={`px-2.5 py-1 rounded-full text-xs font-extrabold border ${badgeClass}`}>
+                                    {labelText}
+                                  </span>
+                                );
+                              })()}
+                            </td>
+                            <td className="p-4 text-xs font-mono font-bold text-gray-500 dark:text-gray-400">
+                              {item.idReservaGenerada !== '-' ? `#${item.idReservaGenerada}` : '-'}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={6} className="p-8 text-center text-[var(--text-muted)] font-medium">
+                            No se encontraron registros de lista de espera para esta búsqueda.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
+
+              {/* Paginación */}
+              {totalWaitlistPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t border-[var(--border-color)]">
+                  <span className="text-xs text-[var(--text-muted)] font-medium">
+                    Mostrando página {waitlistPage} de {totalWaitlistPages} ({filteredWaitlist.length} registros en total)
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      disabled={waitlistPage === 1}
+                      onClick={() => setWaitlistPage(p => Math.max(1, p - 1))}
+                      className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-orange-500/10 hover:text-orange-500 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-inherit transition-all"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <button
+                      disabled={waitlistPage === totalWaitlistPages}
+                      onClick={() => setWaitlistPage(p => Math.min(totalWaitlistPages, p + 1))}
+                      className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-orange-500/10 hover:text-orange-500 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-inherit transition-all"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!loading && activeTab === 'visitas' && (
+          <div className="space-y-6 animate-fade-in">
+            {/* Tarjetas de KPIs */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-[var(--bg-card)] p-6 rounded-3xl shadow-sm border border-[var(--border-color)] flex items-center">
+                <div className="p-4 rounded-2xl bg-orange-50 dark:bg-orange-900/30 mr-4">
+                  <Users className="text-orange-500" size={28} />
+                </div>
+                <div>
+                  <p className="text-sm text-[var(--text-muted)] font-medium">Total Solicitudes</p>
+                  <p className="text-2xl font-black text-[var(--text-main)]">{visitasData.kpis.totalVisitas}</p>
+                </div>
+              </div>
+
+              <div className="bg-[var(--bg-card)] p-6 rounded-3xl shadow-sm border border-[var(--border-color)] flex items-center">
+                <div className="p-4 rounded-2xl bg-green-100 dark:bg-green-900/30 mr-4">
+                  <CheckCircle2 className="text-green-500" size={28} />
+                </div>
+                <div>
+                  <p className="text-sm text-[var(--text-muted)] font-medium">Tasa de Aprobación</p>
+                  <p className="text-2xl font-black text-[var(--text-main)]">{visitasData.kpis.tasaAprobacion}</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5 font-bold">
+                    Aprobadas: {visitasData.kpis.visitasAprobadas} | Rechazadas: {visitasData.kpis.visitasRechazadas}
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-[var(--bg-card)] p-6 rounded-3xl shadow-sm border border-[var(--border-color)] flex items-center">
+                <div className="p-4 rounded-2xl bg-blue-100 dark:bg-blue-900/30 mr-4">
+                  <Activity className="text-blue-500" size={28} />
+                </div>
+                <div>
+                  <p className="text-sm text-[var(--text-muted)] font-medium">Flujo Operativo (Visitas)</p>
+                  <p className="text-lg font-black text-[var(--text-main)]">
+                    En Planta: {visitasData.kpis.visitasEnPlanta}
+                  </p>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5 font-bold">
+                    Completadas/Finalizadas: {visitasData.kpis.visitasFinalizadas}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Gráficos de Rankings */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Ranking de Anfitriones */}
+              <div className="bg-[var(--bg-card)] p-6 rounded-3xl shadow-sm border border-[var(--border-color)] flex flex-col">
+                <div className="mb-4">
+                  <h3 className="text-lg font-bold text-[var(--text-main)]">Top Anfitriones (Empleados)</h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-1 font-semibold">Ranking de colaboradores que registran la mayor cantidad de solicitudes de visitas.</p>
+                </div>
+                <div className="h-[300px] w-full mt-auto">
+                  {visitasData.rankingAnfitriones && visitasData.rankingAnfitriones.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={visitasData.rankingAnfitriones} layout="vertical" margin={{ top: 10, right: 10, left: 20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border-color)" />
+                        <XAxis type="number" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} tickLine={false} axisLine={false} />
+                        <YAxis type="category" dataKey="nombre" tick={{ fill: 'var(--text-main)', fontSize: 11, fontWeight: 600 }} tickLine={false} axisLine={false} width={110} />
+                        <RechartsTooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', borderRadius: '12px', color: 'var(--text-main)' }} />
+                        <Bar dataKey="cantidad" fill="#F97316" radius={[0, 8, 8, 0]} name="Solicitudes" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-[var(--text-muted)] font-medium">
+                      Sin datos para graficar.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Ranking de Zonas */}
+              <div className="bg-[var(--bg-card)] p-6 rounded-3xl shadow-sm border border-[var(--border-color)] flex flex-col">
+                <div className="mb-4">
+                  <h3 className="text-lg font-bold text-[var(--text-main)]">Ranking por Zona</h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-1 font-semibold">Zonas con mayor volumen de visitas aprobadas y finalizadas.</p>
+                </div>
+                <div className="h-[300px] w-full mt-auto">
+                  {visitasData.rankingZonas && visitasData.rankingZonas.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={visitasData.rankingZonas} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
+                        <XAxis dataKey="nombreZona" tick={{ fill: 'var(--text-muted)', fontSize: 11, fontWeight: 600 }} tickLine={false} axisLine={false} interval={0} />
+                        <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                        <RechartsTooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', borderRadius: '12px', color: 'var(--text-main)' }} />
+                        <Bar dataKey="cantidad" fill="#3B82F6" radius={[8, 8, 0, 0]} name="Aprobadas y Finalizadas" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-[var(--text-muted)] font-medium">
+                      Sin datos para graficar.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Tabla de Historial */}
+            <div className="bg-[var(--bg-card)] p-6 rounded-3xl shadow-sm border border-[var(--border-color)] space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-[var(--text-main)]">Registro de Visitas Externas</h3>
+                  <p className="text-sm text-[var(--text-muted)] font-medium">Historial completo de solicitudes de ingreso para visitas y proveedores.</p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Buscador */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-[var(--text-muted)]" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por visitante o anfitrión..."
+                      value={visitasSearch}
+                      onChange={(e) => setVisitasSearch(e.target.value)}
+                      className="pl-10 pr-4 py-2 bg-[var(--bg-body)] border border-[var(--border-color)] rounded-xl text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-orange-500 w-60 font-medium"
+                    />
+                  </div>
+
+                  {/* Filtro Estado Solicitud */}
+                  <select
+                    value={visitasFilterEstado}
+                    onChange={(e) => setVisitasFilterEstado(e.target.value)}
+                    className="px-3 py-2 bg-[var(--bg-body)] dark:bg-[#2a2a2a] border border-[var(--border-color)] dark:border-[#444] rounded-xl text-sm text-[var(--text-main)] dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 font-medium cursor-pointer [&_option]:dark:bg-[#2a2a2a] [&_option]:dark:text-gray-100"
+                  >
+                    <option value="todos">Estados de Solicitud</option>
+                    <option value="aprobada">Aprobada</option>
+                    <option value="rechazada">Rechazada</option>
+                    <option value="pendiente">Pendiente</option>
+                  </select>
+
+                  {/* Filtro Operativo */}
+                  <select
+                    value={visitasFilterOperativo}
+                    onChange={(e) => setVisitasFilterOperativo(e.target.value)}
+                    className="px-3 py-2 bg-[var(--bg-body)] dark:bg-[#2a2a2a] border border-[var(--border-color)] dark:border-[#444] rounded-xl text-sm text-[var(--text-main)] dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 font-medium cursor-pointer [&_option]:dark:bg-[#2a2a2a] [&_option]:dark:text-gray-100"
+                  >
+                    <option value="todos">Flujos Operativos</option>
+                    <option value="esperando">Esperando</option>
+                    <option value="en planta">En Planta</option>
+                    <option value="finalizada">Finalizada</option>
+                    <option value="cancelada">Cancelada</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Contenedor de Tabla */}
+              <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-orange-500/10 border-b border-[var(--border-color)]">
+                        <th className="p-4 font-bold text-orange-500 text-sm">Visitante</th>
+                        <th className="p-4 font-bold text-orange-500 text-sm">Anfitrión</th>
+                        <th className="p-4 font-bold text-orange-500 text-sm">Calzo</th>
+                        <th className="p-4 font-bold text-orange-500 text-sm">Horario Programado</th>
+                        <th className="p-4 font-bold text-orange-500 text-sm">Estado Solicitud</th>
+                        <th className="p-4 font-bold text-orange-500 text-sm">Flujo Operativo</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border-color)] text-[var(--text-main)]">
+                      {paginatedVisitas.length > 0 ? (
+                        paginatedVisitas.map((item: any) => (
+                          <tr key={item.idVisita} className="hover:bg-orange-500/5 transition-colors text-sm">
+                            <td className="p-4">
+                              <span className="font-semibold block">{item.nombreVisitante}</span>
+                              <span className="block text-xs text-[var(--text-muted)] font-medium">RUT: {item.rutVisitante}</span>
+                              <span className="block text-xs text-blue-500 font-bold mt-0.5">Matrícula: {item.matricula}</span>
+                            </td>
+                            <td className="p-4">
+                              <span className="font-semibold block">{item.nombreAnfitrion}</span>
+                              <span className="block text-xs text-[var(--text-muted)] font-medium">RUT: {item.rutAnfitrion}</span>
+                            </td>
+                            <td className="p-4">
+                              {item.idCalzo !== '-' ? (
+                                <span className="font-semibold block">{getCalzoFullLabel(item.idCalzo)}</span>
+                              ) : (
+                                <span className="text-[var(--text-muted)]">-</span>
+                              )}
+                            </td>
+                            <td className="p-4 text-xs font-semibold">
+                              <span className="block text-blue-500">Entrada: {item.fechaEntrada}</span>
+                              <span className="block text-orange-500">Salida: {item.fechaSalida}</span>
+                            </td>
+                            <td className="p-4">
+                              {(() => {
+                                let badgeClass = '';
+                                if (item.estadoVisita === 'Aprobada') {
+                                  badgeClass = 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
+                                } else if (item.estadoVisita === 'Rechazada') {
+                                  badgeClass = 'bg-rose-500/10 text-rose-600 border-rose-500/20';
+                                } else if (item.estadoVisita === 'Pendiente') {
+                                  badgeClass = 'bg-amber-500/10 text-amber-600 border-amber-500/20';
+                                }
+                                return (
+                                  <span className={`px-2.5 py-1 rounded-full text-xs font-extrabold border ${badgeClass}`}>
+                                    {item.estadoVisita}
+                                  </span>
+                                );
+                              })()}
+                            </td>
+                            <td className="p-4">
+                              {(() => {
+                                let badgeClass = 'bg-gray-500/10 text-gray-600 border-gray-500/20';
+                                if (item.estadoOperativo === 'Esperando') {
+                                  badgeClass = 'bg-blue-500/10 text-blue-600 border-blue-500/20';
+                                } else if (item.estadoOperativo === 'En Planta') {
+                                  badgeClass = 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20';
+                                } else if (item.estadoOperativo === 'Finalizada') {
+                                  badgeClass = 'bg-green-500/10 text-green-600 border-green-500/20';
+                                } else if (item.estadoOperativo === 'Cancelada') {
+                                  badgeClass = 'bg-gray-500/10 text-gray-600 border-gray-500/20';
+                                } else if (item.estadoOperativo === 'Rechazada') {
+                                  badgeClass = 'bg-rose-500/10 text-rose-600 border-rose-500/20';
+                                }
+                                return (
+                                  <span className={`px-2.5 py-1 rounded-full text-xs font-extrabold border ${badgeClass}`}>
+                                    {item.estadoOperativo || '-'}
+                                  </span>
+                                );
+                              })()}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={6} className="p-8 text-center text-[var(--text-muted)] font-medium">
+                            No se encontraron registros de visitas para esta búsqueda.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Paginación */}
+              {totalVisitasPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t border-[var(--border-color)]">
+                  <span className="text-xs text-[var(--text-muted)] font-medium">
+                    Mostrando página {visitasPage} de {totalVisitasPages} ({filteredVisitas.length} registros en total)
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      disabled={visitasPage === 1}
+                      onClick={() => setVisitasPage(p => Math.max(1, p - 1))}
+                      className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-orange-500/10 hover:text-orange-500 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-inherit transition-all"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <button
+                      disabled={visitasPage === totalVisitasPages}
+                      onClick={() => setVisitasPage(p => Math.min(totalVisitasPages, p + 1))}
+                      className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-orange-500/10 hover:text-orange-500 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-inherit transition-all"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!loading && activeTab === 'conducta' && (
+          <div className="space-y-6 animate-fade-in">
+            {/* Tarjetas de KPIs */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-5 gap-4">
+              {/* Fila 1 */}
+              <div className="bg-[var(--bg-card)] p-5 rounded-3xl shadow-sm border border-[var(--border-color)] flex flex-col gap-3">
+                <div className="p-3 rounded-2xl bg-blue-100 dark:bg-blue-900/30 text-blue-500 w-fit">
+                  <Calendar size={22} />
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--text-muted)] font-medium leading-snug">Reservas Totales</p>
+                  <p className="text-2xl font-black text-[var(--text-main)]">{conductaData.kpis.totalReservas}</p>
+                </div>
+              </div>
+
+              <div className="bg-[var(--bg-card)] p-5 rounded-3xl shadow-sm border border-[var(--border-color)] flex flex-col gap-3">
+                <div className="p-3 rounded-2xl bg-rose-100 dark:bg-rose-900/30 text-rose-500 w-fit">
+                  <UserX size={22} />
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--text-muted)] font-medium leading-snug">Inasistencias Totales</p>
+                  <p className="text-2xl font-black text-[var(--text-main)]">{conductaData.kpis.totalNoShows}</p>
+                </div>
+              </div>
+
+              <div className="bg-[var(--bg-card)] p-5 rounded-3xl shadow-sm border border-[var(--border-color)] flex flex-col gap-3">
+                <div className="p-3 rounded-2xl bg-purple-100 dark:bg-purple-900/30 text-purple-500 w-fit">
+                  <Activity size={22} />
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--text-muted)] font-medium leading-snug">Tasa de Inasistencias</p>
+                  <p className="text-2xl font-black text-[var(--text-main)]">{conductaData.kpis.tasaNoShow}</p>
+                </div>
+              </div>
+
+              {/* Fila 2 */}
+              <div className="bg-[var(--bg-card)] p-5 rounded-3xl shadow-sm border border-[var(--border-color)] flex flex-col gap-3">
+                <div className="p-3 rounded-2xl bg-amber-100 dark:bg-amber-900/30 text-amber-500 w-fit">
+                  <AlertCircle size={22} />
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--text-muted)] font-medium leading-snug">Inasistencias Fijos</p>
+                  <p className="text-2xl font-black text-[var(--text-main)]">{conductaData.kpis.noShowsCalzosFijos}</p>
+                </div>
+              </div>
+
+              <div className="bg-[var(--bg-card)] p-5 rounded-3xl shadow-sm border border-[var(--border-color)] flex flex-col gap-3">
+                <div className="p-3 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-500 w-fit">
+                  <Unlock size={22} />
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--text-muted)] font-medium leading-snug">Liberaciones</p>
+                  <p className="text-2xl font-black text-[var(--text-main)]">{conductaData.kpis.totalLiberaciones}</p>
+                </div>
+              </div>
+
+              <div className="bg-[var(--bg-card)] p-5 rounded-3xl shadow-sm border border-[var(--border-color)] flex flex-col gap-3">
+                <div className="p-3 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 w-fit">
+                  <CheckCircle2 size={22} />
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--text-muted)] font-medium leading-snug">Asistidas</p>
+                  <p className="text-2xl font-black text-[var(--text-main)]">{conductaData.kpis.totalAsistidas}</p>
+                </div>
+              </div>
+
+              {/* Fila 3 — Métricas de Calzos */}
+              <div className="bg-[var(--bg-card)] p-5 rounded-3xl shadow-sm border border-[var(--border-color)] flex flex-col gap-3">
+                <div className="p-3 rounded-2xl bg-sky-100 dark:bg-sky-900/30 text-sky-500 w-fit">
+                  <Activity size={22} />
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--text-muted)] font-medium leading-snug">Total Calzos en Planta</p>
+                  <p className="text-2xl font-black text-[var(--text-main)]">{conductaData.kpis.totalCalzos || 0}</p>
+                </div>
+              </div>
+
+              <div className="bg-[var(--bg-card)] p-5 rounded-3xl shadow-sm border border-[var(--border-color)] flex flex-col gap-3">
+                <div className="p-3 rounded-2xl bg-orange-100 dark:bg-orange-900/30 text-orange-500 w-fit">
+                  <Award size={22} />
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--text-muted)] font-medium leading-snug">Calzos Fijos Asignados</p>
+                  <p className="text-2xl font-black text-[var(--text-main)]">{conductaData.kpis.totalCalzosFijos || 0}</p>
+                </div>
+              </div>
+
+              <div className="bg-[var(--bg-card)] p-5 rounded-3xl shadow-sm border border-[var(--border-color)] flex flex-col gap-3">
+                <div className="p-3 rounded-2xl bg-green-100 dark:bg-green-900/30 text-green-500 w-fit">
+                  <Shield size={22} />
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--text-muted)] font-medium leading-snug">Tasa Asignación Fija</p>
+                  <p className="text-2xl font-black text-[var(--text-main)]">{conductaData.kpis.porcentajeCalzosFijos || '0.0%'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Lista de Empleados por Inasistencias */}
+            <div className="bg-[var(--bg-card)] p-6 rounded-3xl border border-[var(--border-color)] space-y-6">
+              <h3 className="text-lg font-bold text-[var(--text-main)] flex items-center">
+                <UserX className="mr-2 text-rose-500" size={20} /> Lista de Empleados por Inasistencias
+              </h3>
+
+              {/* Filtros y búsqueda */}
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="relative w-full md:w-80">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Buscar empleado, cargo o calzo..."
+                    value={conductaSearch}
+                    onChange={(e) => setConductaSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-[var(--bg-body)] border border-[var(--border-color)] rounded-xl text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-orange-500 font-medium"
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-3 w-full md:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => setSortByInasistencias(prev => prev === 'nombre' ? 'desc' : prev === 'desc' ? 'asc' : 'nombre')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-semibold transition-all shadow-sm ${
+                      sortByInasistencias !== 'nombre'
+                        ? 'bg-rose-500 text-white border-rose-500 shadow-rose-500/20'
+                        : 'bg-[var(--bg-body)] dark:bg-[#2a2a2a] text-[var(--text-main)] border-[var(--border-color)] hover:opacity-90'
+                    }`}
+                  >
+                    <AlertTriangle size={16} className={sortByInasistencias !== 'nombre' ? 'text-white' : 'text-rose-500'} />
+                    {sortByInasistencias === 'desc' && '↓ Mayor a Menor'}
+                    {sortByInasistencias === 'asc' && '↑ Menor a Mayor'}
+                    {sortByInasistencias === 'nombre' && 'Ordenar por nombre de empleado'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto rounded-2xl border border-[var(--border-color)]">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-rose-500/10 border-b border-[var(--border-color)]">
+                      <th className="p-4 font-bold text-rose-600 text-sm">Empleado</th>
+                      <th className="p-4 font-bold text-rose-600 text-sm">Cargo</th>
+                      <th className="p-4 font-bold text-rose-600 text-sm">Calzo Fijo</th>
+                      <th className="p-4 font-bold text-rose-600 text-sm text-center">Inasistencias</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border-color)] text-[var(--text-main)]">
+                    {paginatedEmpleadosPorInasistencia.length > 0 ? (
+                      paginatedEmpleadosPorInasistencia.map((item: any, idx: number) => (
+                        <tr key={item.rut} className="hover:bg-rose-500/5 transition-colors text-sm">
+                          <td className="p-4">
+                            <span className="font-semibold block">{item.nombre}</span>
+                            <span className="block text-xs text-[var(--text-muted)] font-medium">RUT: {item.rut}</span>
+                          </td>
+                          <td className="p-4 font-medium text-[var(--text-muted)]">{item.cargo}</td>
+                          <td className="p-4">
+                            {item.idCalzo ? (
+                              <span className="font-semibold block text-orange-500">{getCalzoFullLabel(item.idCalzo)}</span>
+                            ) : (
+                              <span className="text-[var(--text-muted)] font-medium">Sin calzo asignado</span>
+                            )}
+                          </td>
+                          <td className="p-4 text-center">
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-rose-500/10 text-rose-600 border border-rose-500/20">
+                              {item.totalInasistencias} Inasistencias
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="p-8 text-center text-[var(--text-muted)] font-medium">
+                          No hay registros de inasistencias en este mes.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Paginación */}
+              {totalConductaPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t border-[var(--border-color)]">
+                  <span className="text-xs text-[var(--text-muted)] font-medium">
+                    Mostrando página {conductaPage} de {totalConductaPages} ({empleadosPorInasistencia.length} empleados en total)
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      disabled={conductaPage === 1}
+                      onClick={() => setConductaPage(p => Math.max(1, p - 1))}
+                      className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-orange-500/10 hover:text-orange-500 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-inherit transition-all"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <button
+                      disabled={conductaPage === totalConductaPages}
+                      onClick={() => setConductaPage(p => Math.min(totalConductaPages, p + 1))}
+                      className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-orange-500/10 hover:text-orange-500 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-inherit transition-all"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* Tab Placeholder para los demás */}
-        {!loading && !['ocupacion', 'incidencias', 'auditoria'].includes(activeTab) && (
+        {!loading && !['ocupacion', 'auditoria', 'espera', 'visitas', 'conducta'].includes(activeTab) && (
           <div className="bg-[var(--bg-card)] p-12 rounded-3xl shadow-sm border border-[var(--border-color)] flex flex-col items-center justify-center text-center h-[500px] animate-fade-in">
             <Activity size={64} className="text-orange-500 mb-6 opacity-80" />
             <h3 className="text-2xl font-black text-[var(--text-main)] mb-2">Construyendo Módulo Analítico</h3>

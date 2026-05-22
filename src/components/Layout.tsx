@@ -9,10 +9,10 @@ interface LayoutProps {
 
 export default function Layout({ children, loading = false }: LayoutProps) {
   return (
-    <div className="min-h-screen bg-[var(--bg-main)] flex flex-col transition-colors duration-200">
+    <div className="min-h-screen bg-[var(--bg-main)] flex flex-col transition-colors duration-200 overflow-x-hidden">
       {loading && <PageLoader />}
       <Navbar />
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+      <main className="flex-1 max-w-7xl w-full min-w-0 mx-auto p-4 sm:p-6 lg:p-8">
         {children}
       </main>
     </div>

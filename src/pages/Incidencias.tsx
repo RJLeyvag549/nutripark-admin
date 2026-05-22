@@ -203,7 +203,7 @@ export default function Incidencias() {
   };
 
   return (
-    <div className="p-8 min-h-screen bg-[var(--bg-main)] text-[var(--text-main)] employees-page">
+    <div className="page-content text-[var(--text-main)] employees-page">
       <style>{`
         .employees-page .dt-container { color: var(--text-main) !important; font-family: 'Inter', sans-serif; }
         table.dataTable { background-color: var(--bg-card) !important; border-radius: 20px; overflow: hidden; border: 1px solid var(--border-color) !important; margin-top: 20px !important; }
@@ -213,14 +213,14 @@ export default function Incidencias() {
         .dt-paging-button.current { background: #ff7700 !important; border-color: #ff7700 !important; color: white !important; border-radius: 8px !important; }
       `}</style>
 
-      <div className="mb-8 flex justify-between items-end">
+      <div className="page-header items-end">
         <div>
-          <h1 className="text-3xl font-black tracking-tight uppercase italic text-orange-500">Historial de Incidencias</h1>
-          <p className="text-[var(--text-muted)] text-sm font-bold uppercase tracking-widest">Registro y gestión de eventos reportados en planta</p>
+          <h1 className="page-title">Historial de Incidencias</h1>
+          <p className="page-subtitle">Registro y gestión de eventos reportados en planta</p>
         </div>
         <button
           onClick={() => setShowNomenclature(true)}
-          className="flex items-center gap-2 bg-[var(--bg-main)] border border-[var(--border-color)] hover:bg-orange-500/10 hover:text-orange-500 text-[var(--text-main)] px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all shadow-sm"
+          className="flex items-center justify-center gap-2 bg-[var(--bg-main)] border border-[var(--border-color)] hover:bg-orange-500/10 hover:text-orange-500 text-[var(--text-main)] px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all shadow-sm w-full sm:w-auto shrink-0"
         >
           <AlertTriangle size={14} /> Nomenclatura
         </button>
@@ -235,7 +235,8 @@ export default function Incidencias() {
         )}
 
         {/* Contenedor aislado para la tabla con KEY para forzar reconstrucción limpia */}
-        <div key={refreshKey} className="bg-[var(--bg-card)] p-6 rounded-[30px] border border-[var(--border-color)] shadow-2xl overflow-hidden">
+        <div key={refreshKey} className="bg-[var(--bg-card)] p-4 sm:p-6 rounded-[30px] border border-[var(--border-color)] shadow-2xl overflow-hidden">
+          <div className="table-responsive">
           <table ref={tableRef} className="display row-border stripe w-full">
             <thead>
               <tr>
@@ -274,6 +275,7 @@ export default function Incidencias() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 
@@ -304,7 +306,7 @@ export default function Incidencias() {
             {/* Contenido Modal */}
             <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-[var(--bg-main)] p-4 rounded-2xl border border-[var(--border-color)]">
                   <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1">Categoría</p>
                   <p className="text-orange-500 font-black text-lg uppercase">{selectedIncidencia.categoria}</p>

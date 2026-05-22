@@ -497,7 +497,7 @@ export default function Empleados() {
 
 
   return (
-    <div className="p-8 min-h-screen bg-[var(--bg-main)] text-[var(--text-main)] transition-colors duration-200 employees-page">
+    <div className="page-content text-[var(--text-main)] transition-colors duration-200 employees-page">
       <style>{`
         /* Personalización dinámica de DataTables */
         .employees-page .dt-container {
@@ -701,21 +701,21 @@ export default function Empleados() {
         </div>
       )}
 
-      <div className="flex justify-between items-center mb-8">
+      <div className="page-header">
         <div>
-        <h1 className="text-3xl font-black tracking-tight uppercase italic text-orange-500">Gestión de Empleados</h1>
-        <p className="text-[var(--text-muted)] text-sm font-bold uppercase tracking-widest">Base de datos centralizada de personal y vehículos</p>
+        <h1 className="page-title">Gestión de Empleados</h1>
+        <p className="page-subtitle">Base de datos centralizada de personal y vehículos</p>
         </div>
         <button
           onClick={openNewEmployeeModal}
-          className="bg-[#ff7700] hover:bg-[#e66b00] text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-orange-900/40"
+          className="bg-[#ff7700] hover:bg-[#e66b00] text-white px-6 sm:px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-orange-900/40 w-full sm:w-auto text-center shrink-0"
         >
           + NUEVO EMPLEADO
         </button>
       </div>
 
-      <div className="bg-[var(--bg-card)] p-6 rounded-3xl border border-[var(--border-color)] shadow-2xl relative">
-        <div className="mb-4 text-sm text-[var(--text-muted)] flex items-center gap-4">
+      <div className="bg-[var(--bg-card)] p-4 sm:p-6 rounded-3xl border border-[var(--border-color)] shadow-2xl relative overflow-hidden">
+        <div className="mb-4 text-sm text-[var(--text-muted)] flex flex-wrap items-center gap-3 sm:gap-4">
           <b>Nomenclatura:</b>
           <div className="flex items-center gap-1">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff7700" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
@@ -736,6 +736,7 @@ export default function Empleados() {
             <PageLoader message="Cargando base de datos..." />
           </div>
         ) : (
+          <div className="table-responsive">
           <table id="myTable" ref={tableRef} className="display row-border stripe w-full">
             <thead>
               <tr>
@@ -799,6 +800,7 @@ export default function Empleados() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
