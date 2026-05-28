@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import PageLoader from '../components/PageLoader';
 import {
   Download, FileText, BarChart2, PieChart, Activity, Users, AlertTriangle,
@@ -7,9 +7,7 @@ import {
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
-  Legend, ResponsiveContainer, LineChart, Line, PieChart as RechartsPieChart,
-  Pie, Cell, AreaChart, Area,
-  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
+  Legend, ResponsiveContainer, Cell, AreaChart, Area
 } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';

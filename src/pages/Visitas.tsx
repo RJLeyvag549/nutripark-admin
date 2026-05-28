@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { CheckCircle, XCircle, AlertCircle, Clock, Check, X } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Check, X } from 'lucide-react';
 
 declare global {
   interface Window {
